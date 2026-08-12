@@ -2,7 +2,7 @@
 
 **A high-performance, ultra-lightweight Android web browser built on Android System WebView, featuring an embedded Brave `adblock-rust` C++/Rust engine, uBlock Origin filter lists, multi-language page translation, and Material Design 3 UI.**
 
-Designed to run smoothly on devices with **1 GB RAM** and fully compatible with **Android 5.0 (Lollipop - API 21)** and above.
+Designed to run smoothly on devices with 1 GB RAM and fully compatible with newer Android versions.
 
 ---
 
