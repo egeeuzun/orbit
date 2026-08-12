@@ -17,7 +17,7 @@ Designed to run smoothly on devices with **1 GB RAM** and fully compatible with 
 
 ## ✨ Features
 
-### 🛡️ 1. Brave-Style Shield & Ad Blocking
+### 🛡️ 1. Ad Blocking
 - **Embedded C++/Rust JNI Engine:** Powered by Brave Software's `adblock-rust` crate executing directly at native speed.
 - **Live Blocking Stats:** Tapping the Shield icon opens a bottom sheet showing blocked item counts for the current page and total blocked requests.
 - **Per-Site Protection Toggle:** Easily toggle adblocking ON/OFF for any website with a single tap (per-site allowlist).
