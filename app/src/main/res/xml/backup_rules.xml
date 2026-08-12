@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <include domain="sharedpref" path="orbit.xml" />
+    <include domain="database" path="orbit.db" />
+    <!-- Derlenmiş filtre motoru yedeklenmez; cihazda yeniden üretilir. -->
+    <exclude domain="file" path="engine.bin" />
+    <exclude domain="file" path="filters/" />
+</full-backup-content>

@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <!-- Orbit Icon -->
+        <FrameLayout
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:background="@drawable/bg_shortcut">
+
+            <ImageView
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_gravity="center"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_shield"
+                app:tint="?attr/colorPrimary" />
+        </FrameLayout>
+
+        <!-- Fancy Orbit Title -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="O"
+                android:textColor="#4285F4"
+                android:textSize="32sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="r"
+                android:textColor="#EA4335"
+                android:textSize="32sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="b"
+                android:textColor="#FBBC05"
+                android:textSize="32sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="i"
+                android:textColor="#4285F4"
+                android:textSize="32sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="t"
+                android:textColor="#34A853"
+                android:textSize="32sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <!-- Version Pill -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:layout_marginBottom="16dp"
+            android:background="@drawable/bg_google_status_pill"
+            android:paddingStart="14dp"
+            android:paddingTop="4dp"
+            android:paddingEnd="14dp"
+            android:paddingBottom="4dp"
+            android:text="Sürüm 2026.8"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+
+        <!-- README Description Text -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:lineSpacingExtra="4dp"
+            android:text="Android System WebView üzerine kurulu, ultra hafif ve yüksek performanslı tarayıcı.\n\n🚀 Öne Çıkan Özellikler:\n• Brave adblock-rust Motoru &amp; uBlock Origin Filtreleri: JNI gömülü yüksek hızlı reklam ve izleyici engelleme.\n• Saf Host Hızlı Yolu: Kuralların %73.7\'si 64-bit FNV-1a sıralı dizi üzerinde ikili aramayla 0 JNI maliyetiyle saniyeler içinde işlenir.\n• 1 GB RAM Hedefli Hafiflik: Tek canlı WebView politikası, serileştirilmiş önbellek, kilitsiz DecisionCache.\n• Native CSS Enjeksiyonu: Kozmetik filtreler V8 JS stringsiz doğrudan &lt;link&gt; stylesheet yanıtı olarak native Blink CSS motoruna iletilir.\n• 1x1 GIF Engel Yanıtları: Engellenen görseller için 1x1 saydam GIF dönülerek layout shift önlenir.\n• Arka Plan Ön Isıtma: SQLite veritabanı ve WebView sağlayıcısı uygulama açılışında arka planda hazır tutulur.\n• Gizlilik &amp; Güvenlik: Üçüncü taraf çerez engelleme, Do Not Track (DNT) &amp; Sec-GPC desteği."
+            android:textColor="?attr/colorOnSurface"
+            android:textSize="13sp" />
+    </LinearLayout>
+</ScrollView>

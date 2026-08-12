@@ -1,0 +1,165 @@
+<resources>
+    <string name="app_name">Orbit</string>
+
+    <!-- Address bar -->
+    <string name="url_hint">Search or enter address</string>
+    <string name="search_or_type_url">Search with %1$s or enter address</string>
+    <string name="reload">Reload</string>
+    <string name="stop">Stop</string>
+    <string name="tabs">Tabs</string>
+    <string name="open_tabs_count">%1$d Open Tabs</string>
+    <string name="menu">Menu</string>
+    <string name="adblock_status">Protection status</string>
+
+    <!-- Menu -->
+    <string name="new_tab">New tab</string>
+    <string name="new_incognito_tab">New incognito tab</string>
+    <string name="close_tab">Close tab</string>
+    <string name="close_all_tabs">Close all tabs</string>
+    <string name="bookmarks">Bookmarks</string>
+    <string name="add_bookmark">Add bookmark</string>
+    <string name="remove_bookmark">Remove bookmark</string>
+    <string name="history">History</string>
+    <string name="share">Share</string>
+    <string name="find_in_page">Find in page</string>
+    <string name="desktop_site">Desktop site</string>
+    <string name="add_to_home">Add to Home screen</string>
+    <string name="settings">Settings</string>
+    <string name="forward">Forward</string>
+    <string name="back">Back</string>
+    <string name="home">Home</string>
+    <string name="most_visited">Most Visited</string>
+    <string name="home_empty">Start browsing; your most visited sites will appear here.</string>
+    <string name="exit">Exit</string>
+    <string name="open_in_browser">Open in browser</string>
+
+    <!-- Blocking -->
+    <string name="adblock_on_site">Blocking on this site</string>
+    <string name="blocked_on_page">%1$d requests blocked on this page</string>
+    <string name="blocked_total">Total %1$s requests blocked</string>
+    <string name="engine_loading">Loading filters…</string>
+    <string name="engine_failed">Failed to load adblock engine</string>
+    <string name="engine_ready">Protection active</string>
+    <string name="site_allowlisted">Blocking disabled on this site</string>
+    <string name="updating_lists">Updating filter lists…</string>
+    <string name="lists_updated">Filter lists updated</string>
+    <string name="lists_update_failed">Failed to update filter lists</string>
+
+    <!-- Settings -->
+    <string name="settings_general">General</string>
+    <string name="settings_blocking">Content blocking</string>
+    <string name="settings_privacy">Privacy</string>
+    <string name="settings_performance">Performance</string>
+    <string name="settings_appearance">Appearance</string>
+    <string name="settings_about">About</string>
+
+    <string name="pref_about_orbit">About Orbit</string>
+    <string name="pref_about_orbit_sum">Version 1.228 · Features and details</string>
+
+    <string name="search_engine">Search engine</string>
+    <string name="pref_search_suggestions">Search suggestions</string>
+    <string name="pref_search_suggestions_sum">Show search suggestions from selected engine while typing</string>
+    <string name="home_page">Home page</string>
+    <string name="pref_adblock">Ad &amp; tracker blocking</string>
+    <string name="pref_adblock_sum">Brave adblock engine, uBlock Origin filter lists</string>
+    <string name="pref_cosmetic">Cosmetic filtering</string>
+    <string name="pref_cosmetic_sum">Hides ad spaces that cannot be blocked on network</string>
+    <string name="pref_generic_cosmetic">Generic cosmetic filters</string>
+    <string name="pref_generic_cosmetic_sum">Queried on demand based on page DOM elements</string>
+    <string name="pref_filter_lists">Filter lists</string>
+    <string name="pref_update_lists">Update filter lists now</string>
+    <string name="pref_custom_rules">Custom rules</string>
+    <string name="pref_custom_rules_sum">One rule per line (uBlock Origin syntax)</string>
+    <string name="pref_custom_urls">Custom filter URLs</string>
+    <string name="pref_custom_urls_sum">Add external filter list subscriptions (one URL per line)</string>
+    <string name="custom_urls_added">%1$d custom filter subscriptions added</string>
+    <string name="pref_js">JavaScript</string>
+    <string name="pref_3p_cookies">Block third-party cookies</string>
+    <string name="pref_dnt">Do Not Track (DNT + GPC)</string>
+    <string name="pref_safe_browsing">Safe Browsing</string>
+    <string name="pref_safe_browsing_sum">Malicious site warning; disabling reduces load latency</string>
+    <string name="pref_history">Save browsing history</string>
+    <string name="pref_clear_exit">Clear data on exit</string>
+    <string name="pref_clear_now">Clear browsing data</string>
+    <string name="pref_live_tabs">Live tabs in memory</string>
+    <string name="pref_live_tabs_sum">1 recommended for low RAM; background tabs are suspended</string>
+    <string name="pref_block_images">Block images</string>
+    <string name="pref_block_images_sum">Saves data and memory</string>
+    <string name="pref_theme">Theme</string>
+    <string name="pref_force_dark">Force dark mode for web pages</string>
+    <string name="theme_system">System</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+
+    <string name="updated_today">Updated today</string>
+    <string name="updated_yesterday">Updated yesterday</string>
+    <string name="updated_days_ago">Updated %1$d days ago</string>
+
+    <!-- About Screen -->
+    <string name="version_label">Version %1$s</string>
+    <string name="about_tagline">Ultra lightweight and high-performance ad-blocking browser built on Android System WebView.</string>
+    <string name="about_features_title">Key Features</string>
+    <string name="about_feature1_title">🛡 Brave adblock-rust Engine &amp; uBO Lists</string>
+    <string name="about_feature1_desc">JNI-embedded high-speed adblock engine powered by uBlock Origin base, badware, privacy, EasyList, and AdGuard filter lists.</string>
+    <string name="about_feature2_title">⚡ Pure Host Fast Path</string>
+    <string name="about_feature2_desc">73.7%% of rules are checked on 64-bit FNV-1a sorted arrays via binary search with 0 JNI overhead in milliseconds.</string>
+    <string name="about_feature3_title">🪶 1 GB RAM Low-Memory Architecture</string>
+    <string name="about_feature3_desc">Single live WebView policy, serialized engine.bin filter cache, and lock-free DecisionCache for fluid low-RAM experience.</string>
+    <string name="about_feature4_title">🎨 Native CSS &amp; 1x1 GIF Interception</string>
+    <string name="about_feature4_desc">Cosmetic CSS delivered directly as &lt;link&gt; stylesheet bypassing V8 JS string allocations; 1x1 transparent GIFs prevent layout shifts.</string>
+    <string name="about_feature5_title">🔒 Advanced Privacy &amp; Pre-warming</string>
+    <string name="about_feature5_desc">Third-party cookie blocking, Do Not Track (DNT) &amp; Sec-GPC support. SQLite DB and WebView provider pre-warmed off main thread on startup.</string>
+
+    <!-- Shield -->
+    <string name="shield_title">Protection &amp; Shield</string>
+    <string name="shield_protection_active">Protection Active</string>
+    <string name="shield_protection_disabled">Protection Disabled</string>
+    <string name="shield_toggle_label">Ads &amp; Tracker Blocking</string>
+    <string name="shield_toggle_sub_active">Blocking ads, trackers, and popup scripts on this site</string>
+    <string name="shield_toggle_sub_disabled">Blocking turned off for this site</string>
+    <string name="shield_blocked_page">Blocked on this Page</string>
+    <string name="shield_blocked_total">Total Blocked</string>
+    <string name="shield_footer_info">Brave adblock-rust engine · uBlock Origin lists</string>
+
+    <!-- Translation -->
+    <string name="translate_page">Translate Page</string>
+    <string name="translate_source_lang">Source Language</string>
+    <string name="translate_target_lang">Target Language</string>
+    <string name="translate_action">Translate</string>
+    <string name="translate_auto_detect">Auto Detect</string>
+
+    <!-- Licenses -->
+    <string name="about_licenses_title">Licenses &amp; Open Source</string>
+    <string name="about_orbit_license_title">📄 Orbit Browser — Mozilla Public License 2.0 (MPL 2.0)</string>
+    <string name="about_orbit_license_desc">Orbit is open-source software. The source code is licensed and distributed under the terms of the Mozilla Public License 2.0 (MPL 2.0).</string>
+    <string name="about_libraries_title">📦 Open Source Libraries &amp; Dependencies</string>
+    <string name="about_lib_adblock_title">Brave adblock-rust Engine (MPL 2.0)</string>
+    <string name="about_lib_adblock_desc">High-speed C++/Rust JNI adblock engine by Brave Software.</string>
+    <string name="about_lib_ubo_title">uBlock Origin Filter Lists (GPLv3)</string>
+    <string name="about_lib_ubo_desc">Community filter lists by Raymond Hill (gorhill) and contributors.</string>
+    <string name="about_lib_androidx_title">AndroidX &amp; Jetpack Libraries (Apache 2.0)</string>
+    <string name="about_lib_androidx_desc">Core-KTX, AppCompat, RecyclerView, WebKit, Lifecycle by Google.</string>
+    <string name="about_lib_material_title">Google Material Components (Apache 2.0)</string>
+    <string name="about_lib_material_desc">Material Design 3 UI components &amp; BottomSheet dialogs by Google.</string>
+    <string name="about_lib_kotlin_title">Kotlin Standard Library (Apache 2.0)</string>
+    <string name="about_lib_kotlin_desc">Programming language runtime &amp; tools by JetBrains.</string>
+
+    <!-- Settings -->
+    <string name="pref_restore_tabs">Restore open tabs</string>
+    <string name="pref_restore_tabs_sum">Automatically restore open tabs when restarting the app</string>
+
+    <!-- General -->
+    <string name="ok">OK</string>
+    <string name="cancel">Cancel</string>
+    <string name="save">Save</string>
+    <string name="clear">Clear</string>
+    <string name="empty_history">History is empty</string>
+    <string name="empty_bookmarks">No bookmarks</string>
+    <string name="bookmark_added">Bookmark added</string>
+    <string name="bookmark_removed">Bookmark removed</string>
+    <string name="data_cleared">Browsing data cleared</string>
+    <string name="download_started">Download started</string>
+    <string name="incognito_tab">Incognito tab</string>
+    <string name="no_app_for_link">No app available to handle this link</string>
+    <string name="find_hint">Find in page</string>
+</resources>

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <style name="Theme.Orbit" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/m3_primary_light</item>
+        <item name="colorOnPrimary">@color/m3_on_primary_light</item>
+        <item name="colorPrimaryContainer">@color/m3_primary_container_light</item>
+        <item name="colorOnPrimaryContainer">@color/m3_on_primary_container_light</item>
+        <item name="colorSurface">@color/m3_surface_light</item>
+        <item name="colorSurfaceContainer">@color/m3_surface_container_light</item>
+        <item name="colorSurfaceContainerHigh">@color/m3_surface_container_high_light</item>
+        <item name="colorOnSurface">@color/m3_on_surface_light</item>
+        <item name="colorOnSurfaceVariant">@color/m3_on_surface_variant_light</item>
+        <item name="android:statusBarColor">?attr/colorSurface</item>
+        <item name="android:navigationBarColor">?attr/colorSurfaceContainer</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">true</item>
+        <item name="bottomSheetDialogTheme">@style/BottomSheetDialogTheme</item>
+    </style>
+
+    <style name="Theme.Orbit.Fullscreen" parent="Theme.Orbit">
+        <item name="android:windowFullscreen">true</item>
+    </style>
+
+    <style name="BottomSheetDialogTheme" parent="Theme.Material3.DayNight.BottomSheetDialog">
+        <item name="bottomSheetStyle">@style/BottomSheetStyle</item>
+    </style>
+
+    <style name="BottomSheetStyle" parent="Widget.Material3.BottomSheet.Modal">
+        <item name="android:background">@drawable/bg_bottom_sheet</item>
+    </style>
+</resources>

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ic_launcher_background">#0F172A</color>
+
+    <!-- Material 3 Palette Light -->
+    <color name="m3_primary_light">#2563EB</color>
+    <color name="m3_on_primary_light">#FFFFFF</color>
+    <color name="m3_primary_container_light">#DBEAFE</color>
+    <color name="m3_on_primary_container_light">#1E3A8A</color>
+    <color name="m3_surface_light">#F8FAFC</color>
+    <color name="m3_surface_container_light">#F1F5F9</color>
+    <color name="m3_surface_container_high_light">#E2E8F0</color>
+    <color name="m3_on_surface_light">#0F172A</color>
+    <color name="m3_on_surface_variant_light">#64748B</color>
+
+    <!-- Material 3 Palette Dark -->
+    <color name="m3_primary_dark">#60A5FA</color>
+    <color name="m3_on_primary_dark">#1E3A8A</color>
+    <color name="m3_primary_container_dark">#1E293B</color>
+    <color name="m3_on_primary_container_dark">#DBEAFE</color>
+    <color name="m3_surface_dark">#0F172A</color>
+    <color name="m3_surface_container_dark">#1E293B</color>
+    <color name="m3_surface_container_high_dark">#334155</color>
+    <color name="m3_on_surface_dark">#F8FAFC</color>
+    <color name="m3_on_surface_variant_dark">#94A3B8</color>
+</resources>

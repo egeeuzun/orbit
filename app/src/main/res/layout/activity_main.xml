@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:id="@+id/browserRoot"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:animateLayoutChanges="true"
+        android:orientation="vertical">
+
+        <!-- Google Chrome Style Top Toolbar (Omnibox Bar) -->
+        <LinearLayout
+            android:id="@+id/topBar"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:background="?attr/colorSurface"
+            android:elevation="2dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp">
+
+            <!-- Shield / Protection Status Button -->
+            <ImageButton
+                android:id="@+id/shieldButton"
+                android:layout_width="38dp"
+                android:layout_height="38dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/adblock_status"
+                android:padding="8dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_shield"
+                app:tint="#4285F4" />
+
+            <!-- Google Chrome Omnibox -->
+            <EditText
+                android:id="@+id/urlBar"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_marginStart="4dp"
+                android:layout_marginEnd="6dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_google_searchbox"
+                android:hint="Google'da arayın veya adres yazın"
+                android:imeOptions="actionGo|flagNoExtractUi"
+                android:inputType="textUri|textNoSuggestions"
+                android:maxLines="1"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:selectAllOnFocus="true"
+                android:singleLine="true"
+                android:textColor="?attr/colorOnSurface"
+                android:textColorHint="?attr/colorOnSurfaceVariant"
+                android:textSize="14sp"
+                tools:text="google.com" />
+
+            <!-- Google Chrome Tab Switcher Button -->
+            <FrameLayout
+                android:layout_width="38dp"
+                android:layout_height="38dp">
+
+                <ImageButton
+                    android:id="@+id/navTabs"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/tabs"
+                    android:padding="8dp"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_tabs"
+                    app:tint="?attr/colorOnSurface" />
+
+                <TextView
+                    android:id="@+id/tabCount"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:text="1"
+                    android:textColor="?attr/colorOnSurface"
+                    android:textSize="10sp"
+                    android:textStyle="bold" />
+            </FrameLayout>
+
+            <!-- Google Chrome 3-Dot Menu Button -->
+            <ImageButton
+                android:id="@+id/navMenu"
+                android:layout_width="38dp"
+                android:layout_height="38dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/menu"
+                android:padding="8dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_more"
+                app:tint="?attr/colorOnSurface" />
+        </LinearLayout>
+
+        <!-- Progress Bar -->
+        <ProgressBar
+            android:id="@+id/progressBar"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="3dp"
+            android:max="100"
+            android:progressDrawable="@drawable/progress_thin"
+            android:visibility="gone" />
+
+        <!-- Web Container & Home View -->
+        <FrameLayout
+            android:id="@+id/webContainer"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1">
+
+            <com.orbit.browser.ui.HomeView
+                android:id="@+id/homeView"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:visibility="gone" />
+        </FrameLayout>
+
+        <!-- Google Chrome Style Bottom Action Bar -->
+        <LinearLayout
+            android:id="@+id/bottomBar"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:background="?attr/colorSurfaceContainer"
+            android:elevation="4dp"
+            android:orientation="horizontal">
+
+            <ImageButton
+                android:id="@+id/navBack"
+                style="@style/NavButton"
+                android:contentDescription="@string/back"
+                android:src="@drawable/ic_back"
+                app:tint="?attr/colorOnSurface" />
+
+            <ImageButton
+                android:id="@+id/navForward"
+                style="@style/NavButton"
+                android:contentDescription="@string/forward"
+                android:src="@drawable/ic_forward"
+                app:tint="?attr/colorOnSurface" />
+
+            <ImageButton
+                android:id="@+id/navHome"
+                style="@style/NavButton"
+                android:contentDescription="@string/home"
+                android:src="@drawable/ic_home"
+                app:tint="?attr/colorOnSurface" />
+
+            <ImageButton
+                android:id="@+id/reloadButton"
+                style="@style/NavButton"
+                android:contentDescription="@string/reload"
+                android:src="@drawable/ic_refresh"
+                app:tint="?attr/colorOnSurface" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/suggestions"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="56dp"
+        android:background="?attr/colorSurfaceContainer"
+        android:elevation="8dp"
+        android:visibility="gone" />
+
+    <FrameLayout
+        android:id="@+id/fullscreenContainer"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#000000"
+        android:visibility="gone" />
+</FrameLayout>

@@ -1,0 +1,165 @@
+<resources>
+    <string name="app_name">Orbit</string>
+
+    <!-- Adres çubuğu -->
+    <string name="url_hint">Ara veya adres gir</string>
+    <string name="search_or_type_url">%1$s ile arayın veya adres yazın</string>
+    <string name="reload">Yenile</string>
+    <string name="stop">Durdur</string>
+    <string name="tabs">Sekmeler</string>
+    <string name="open_tabs_count">%1$d Açık Sekme</string>
+    <string name="menu">Menü</string>
+    <string name="adblock_status">Engelleme durumu</string>
+
+    <!-- Menü -->
+    <string name="new_tab">Yeni sekme</string>
+    <string name="new_incognito_tab">Yeni gizli sekme</string>
+    <string name="close_tab">Sekmeyi kapat</string>
+    <string name="close_all_tabs">Tüm sekmeleri kapat</string>
+    <string name="bookmarks">Yer imleri</string>
+    <string name="add_bookmark">Yer imi ekle</string>
+    <string name="remove_bookmark">Yer imini kaldır</string>
+    <string name="history">Geçmiş</string>
+    <string name="share">Paylaş</string>
+    <string name="find_in_page">Sayfada bul</string>
+    <string name="desktop_site">Masaüstü görünümü</string>
+    <string name="add_to_home">Ana ekrana ekle</string>
+    <string name="settings">Ayarlar</string>
+    <string name="forward">İleri</string>
+    <string name="back">Geri</string>
+    <string name="home">Ana sayfa</string>
+    <string name="most_visited">En Çok Ziyaret Edilenler</string>
+    <string name="home_empty">Gezinmeye başlayın; sık kullandığınız siteler burada belirir.</string>
+    <string name="exit">Çık</string>
+    <string name="open_in_browser">Tarayıcıda aç</string>
+
+    <!-- Engelleme -->
+    <string name="adblock_on_site">Bu sitede engelleme</string>
+    <string name="blocked_on_page">Bu sayfada %1$d istek engellendi</string>
+    <string name="blocked_total">Toplam %1$s istek engellendi</string>
+    <string name="engine_loading">Filtreler yükleniyor…</string>
+    <string name="engine_failed">Filtre motoru yüklenemedi</string>
+    <string name="engine_ready">Koruma etkin</string>
+    <string name="site_allowlisted">Bu sitede engelleme kapalı</string>
+    <string name="updating_lists">Listeler güncelleniyor…</string>
+    <string name="lists_updated">Filtre listeleri güncellendi</string>
+    <string name="lists_update_failed">Listeler güncellenemedi</string>
+
+    <!-- Ayarlar -->
+    <string name="settings_general">Genel</string>
+    <string name="settings_blocking">İçerik engelleme</string>
+    <string name="settings_privacy">Gizlilik</string>
+    <string name="settings_performance">Performans</string>
+    <string name="settings_appearance">Görünüm</string>
+    <string name="settings_about">Hakkında</string>
+
+    <string name="pref_about_orbit">Orbit Hakkında</string>
+    <string name="pref_about_orbit_sum">Sürüm 1.228 · Özellikler ve detaylar</string>
+
+    <string name="search_engine">Arama motoru</string>
+    <string name="pref_search_suggestions">Arama önerileri</string>
+    <string name="pref_search_suggestions_sum">Yazarken seçili arama motorundan çevrimiçi öneriler göster</string>
+    <string name="home_page">Ana sayfa</string>
+    <string name="pref_adblock">Reklam ve izleyici engelleme</string>
+    <string name="pref_adblock_sum">Brave adblock motoru, uBlock Origin filtre listeleri</string>
+    <string name="pref_cosmetic">Kozmetik filtreleme</string>
+    <string name="pref_cosmetic_sum">Ağda engellenemeyen reklam alanlarını gizler</string>
+    <string name="pref_generic_cosmetic">Genel kozmetik filtreler</string>
+    <string name="pref_generic_cosmetic_sum">Sayfadaki öğelere göre isteğe bağlı sorgulanır</string>
+    <string name="pref_filter_lists">Filtre listeleri</string>
+    <string name="pref_update_lists">Listeleri şimdi güncelle</string>
+    <string name="pref_custom_rules">Kendi kurallarım</string>
+    <string name="pref_custom_rules_sum">Her satıra bir filtre (uBlock Origin sözdizimi)</string>
+    <string name="pref_custom_urls">Özel filtre URL\'leri</string>
+    <string name="pref_custom_urls_sum">Dış kural listesi aboneliği ekleyin (her satıra bir URL)</string>
+    <string name="custom_urls_added">%1$d özel kural aboneliği eklendi</string>
+    <string name="pref_js">JavaScript</string>
+    <string name="pref_3p_cookies">Üçüncü taraf çerezleri engelle</string>
+    <string name="pref_dnt">İzlenmek istemiyorum (DNT + GPC)</string>
+    <string name="pref_safe_browsing">Güvenli Gezinme</string>
+    <string name="pref_safe_browsing_sum">Zararlı site uyarısı; kapatmak açılış gecikmesini azaltır</string>
+    <string name="pref_history">Geçmişi kaydet</string>
+    <string name="pref_clear_exit">Çıkışta verileri temizle</string>
+    <string name="pref_clear_now">Tarama verilerini temizle</string>
+    <string name="pref_live_tabs">Bellekte tutulacak sekme</string>
+    <string name="pref_live_tabs_sum">Düşük RAM\'de 1 önerilir; diğer sekmeler uyutulur</string>
+    <string name="pref_block_images">Görselleri yükleme</string>
+    <string name="pref_block_images_sum">Veri ve bellek tasarrufu</string>
+    <string name="pref_theme">Tema</string>
+    <string name="pref_force_dark">Siteleri koyulaştır</string>
+    <string name="theme_system">Sistem</string>
+    <string name="theme_light">Açık</string>
+    <string name="theme_dark">Koyu</string>
+
+    <string name="updated_today">Bugün güncellendi</string>
+    <string name="updated_yesterday">Dün güncellendi</string>
+    <string name="updated_days_ago">%1$d gün önce güncellendi</string>
+
+    <!-- Hakkında Ekranı -->
+    <string name="version_label">Sürüm %1$s</string>
+    <string name="about_tagline">Android System WebView üzerine kurulu, ultra hafif ve yüksek performanslı reklam engelleyici tarayıcı.</string>
+    <string name="about_features_title">Öne Çıkan Özellikler</string>
+    <string name="about_feature1_title">🛡 Brave adblock-rust Motoru &amp; uBO Listeleri</string>
+    <string name="about_feature1_desc">JNI ile gömülü yüksek hızlı engelleme motoru uBlock Origin temel, badware, privacy, EasyList ve AdGuard Türkçe listeleriyle çalışır.</string>
+    <string name="about_feature2_title">⚡ Saf Host Hızlı Yolu</string>
+    <string name="about_feature2_desc">Kuralların %%73.7\'si 64-bit FNV-1a sıralı dizi üzerinde ikili aramayla 0 JNI maliyetiyle saniyeler içinde işlenir.</string>
+    <string name="about_feature3_title">🪶 1 GB RAM Düşük Bellek Mimarisi</string>
+    <string name="about_feature3_desc">Tek canlı WebView politikası, serileştirilmiş engine.bin filtre önbelleği ve kilitsiz DecisionCache ile düşük bellekte akıcı deneyim.</string>
+    <string name="about_feature4_title">🎨 Native CSS &amp; 1x1 GIF Interception</string>
+    <string name="about_feature4_desc">Kozmetik filtreler V8 JS stringsiz doğrudan &lt;link&gt; stylesheet olarak iletilir; engellenen görseller için 1x1 saydam GIF yanıtı verilir.</string>
+    <string name="about_feature5_title">🔒 Gelişmiş Gizlilik &amp; Ön Isıtma</string>
+    <string name="about_feature5_desc">Üçüncü taraf çerez engelleme, Do Not Track (DNT) ve Sec-GPC desteği. SQLite ve WebView sağlayıcısı açılışta arka planda önceden ısıtılır.</string>
+
+    <!-- Shield -->
+    <string name="shield_title">Kalkan &amp; Koruma</string>
+    <string name="shield_protection_active">Koruma Etkin</string>
+    <string name="shield_protection_disabled">Koruma Devre Dışı</string>
+    <string name="shield_toggle_label">Reklam &amp; İzleyici Engelleme</string>
+    <string name="shield_toggle_sub_active">Bu sitede reklam, izleyici ve açılır pencereler engelleniyor</string>
+    <string name="shield_toggle_sub_disabled">Bu site için engelleme kapalı</string>
+    <string name="shield_blocked_page">Bu Sayfada Engellendi</string>
+    <string name="shield_blocked_total">Toplam Engellendi</string>
+    <string name="shield_footer_info">Brave adblock-rust motoru · uBlock Origin listeleri</string>
+
+    <!-- Çeviri -->
+    <string name="translate_page">Sayfayı Çevir</string>
+    <string name="translate_source_lang">Kaynak Dil</string>
+    <string name="translate_target_lang">Hedef Dil</string>
+    <string name="translate_action">Çevir</string>
+    <string name="translate_auto_detect">Otomatik Algıla</string>
+
+    <!-- Lisanslar -->
+    <string name="about_licenses_title">Lisanslar ve Açık Kaynak</string>
+    <string name="about_orbit_license_title">📄 Orbit Browser — Mozilla Public License 2.0 (MPL 2.0)</string>
+    <string name="about_orbit_license_desc">Orbit açık kaynaklı bir yazılımdır. Tüm kaynak kodları Mozilla Public License 2.0 (MPL 2.0) hükümleri kapsamında lisanslanmış ve dağıtılmaktadır.</string>
+    <string name="about_libraries_title">📦 Kullanılan Açık Kaynak Kütüphaneler</string>
+    <string name="about_lib_adblock_title">Brave adblock-rust Motoru (MPL 2.0)</string>
+    <string name="about_lib_adblock_desc">Brave Software tarafından geliştirilen C++/Rust JNI yüksek hızlı engelleme motoru.</string>
+    <string name="about_lib_ubo_title">uBlock Origin Filtre Listeleri (GPLv3)</string>
+    <string name="about_lib_ubo_desc">Raymond Hill (gorhill) ve topluluk tarafından geliştirilen uBO filtre listeleri.</string>
+    <string name="about_lib_androidx_title">AndroidX &amp; Jetpack Kütüphaneleri (Apache 2.0)</string>
+    <string name="about_lib_androidx_desc">Google AndroidX Core-KTX, AppCompat, RecyclerView, WebKit ve Lifecycle kütüphaneleri.</string>
+    <string name="about_lib_material_title">Google Material Components (Apache 2.0)</string>
+    <string name="about_lib_material_desc">Google Material Design 3 bileşenleri ve BottomSheet arayüz araçları.</string>
+    <string name="about_lib_kotlin_title">Kotlin Standart Kütüphanesi (Apache 2.0)</string>
+    <string name="about_lib_kotlin_desc">JetBrains tarafından geliştirilen çalışma zamanı kütüphanesi.</string>
+
+    <!-- Ayarlar -->
+    <string name="pref_restore_tabs">Sekmeleri kaldığı yerden sürdür</string>
+    <string name="pref_restore_tabs_sum">Uygulama yeniden açıldığında açık sekmeleri otomatik geri yükle</string>
+
+    <!-- Genel -->
+    <string name="ok">Tamam</string>
+    <string name="cancel">İptal</string>
+    <string name="save">Kaydet</string>
+    <string name="clear">Temizle</string>
+    <string name="empty_history">Geçmiş boş</string>
+    <string name="empty_bookmarks">Yer imi yok</string>
+    <string name="bookmark_added">Yer imi eklendi</string>
+    <string name="bookmark_removed">Yer imi kaldırıldı</string>
+    <string name="data_cleared">Tarama verileri temizlendi</string>
+    <string name="download_started">İndirme başladı</string>
+    <string name="incognito_tab">Gizli sekme</string>
+    <string name="no_app_for_link">Bu bağlantıyı açacak uygulama yok</string>
+    <string name="find_hint">Sayfada ara</string>
+</resources>

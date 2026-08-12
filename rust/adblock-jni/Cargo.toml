@@ -1,0 +1,31 @@
+[package]
+name = "adblock-jni"
+version = "1.0.0"
+edition = "2021"
+publish = false
+
+[lib]
+name = "adblock_jni"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+jni = { version = "0.21", default-features = false }
+# `unsync-regex-caching` bilerek kapalı: motor `shouldInterceptRequest`'in
+# çalıştığı birden çok iş parçacığından paylaşıldığı için Sync olmalı.
+# `css-validation`, prosedürel filtrelerin (`:has-text` vb.) düz CSS seçicileri
+# arasına sızıp koca bir CSS bloğunu geçersiz kılmasını engeller.
+adblock = { version = "0.10", default-features = false, features = [
+    "embedded-domain-resolver",
+    "full-regex-handling",
+    "css-validation",
+] }
+serde_json = "1"
+# rmp 0.8.15, adblock'un bağımlılığı olan rmp-serde 0.15 ile derlenmiyor.
+rmp = "=0.8.14"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = "symbols"
