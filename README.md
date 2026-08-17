@@ -6,6 +6,21 @@ Designed to run smoothly on devices with 1 GB RAM and fully compatible with newe
 
 ---
 
+## ✍️ Changes in this fork
+
+This branch includes my own modifications on top of the upstream project —
+full list (in Russian and English): **[CHANGES.md](CHANGES.md)**. Highlights:
+
+- **Webapp mode** from a home-screen shortcut: site opens fullscreen without
+  browser UI, adblock and downloads work inside it
+- Pin-to-home via the system dialog (`requestPinShortcut`)
+- Back gesture works from the first swipe in webapp (navigation bar stays visible)
+- Shared `DownloadHelper` for browser and webapp
+- Live adblock status line on the start screen ("Total N requests blocked")
+- Jelly-style bottom bar, stop button for stuck loads, edge-to-edge, dark `about:blank`
+
+---
+
 ## 📸 Screenshots
 
 <div align="center">
