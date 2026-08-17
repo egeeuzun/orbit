@@ -21,15 +21,6 @@ full list (in Russian and English): **[CHANGES.md](CHANGES.md)**. Highlights:
 
 ---
 
-## 📸 Screenshots
-
-<div align="center">
-  <img src="Screenshot_20260812-203516_Orbit.png" width="45%" alt="Brave-style Shield Card &amp; Ad Blocking" />
-  <img src="Screenshot_20260812-205710_Orbit.png" width="45%" alt="Web Page Translation Service" />
-</div>
-
----
-
 ## ✨ Features
 
 ### 🛡️ 1. Ad Blocking
