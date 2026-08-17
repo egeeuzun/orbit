@@ -24,6 +24,8 @@
     <string name="find_in_page">Find in page</string>
     <string name="desktop_site">Desktop site</string>
     <string name="add_to_home">Add to Home screen</string>
+    <string name="shortcut_added">Shortcut added to Home screen</string>
+    <string name="shortcut_failed">Could not add shortcut</string>
     <string name="settings">Settings</string>
     <string name="forward">Forward</string>
     <string name="back">Back</string>

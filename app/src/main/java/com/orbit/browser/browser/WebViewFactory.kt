@@ -36,7 +36,17 @@ object WebViewFactory {
             ViewGroup.LayoutParams.MATCH_PARENT
         )
         web.isScrollbarFadingEnabled = true
-        web.setBackgroundColor(0xFFFFFFFF.toInt())
+        // Sayfa yüklenene kadar görünen zemin: koyu temada koyu, aydınlıkta
+        // açık — about:blank dahil beyaz flaş olmasın.
+        val isNight = (context.resources.configuration.uiMode and
+            android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+            android.content.res.Configuration.UI_MODE_NIGHT_YES
+        web.setBackgroundColor(
+            androidx.core.content.ContextCompat.getColor(
+                context,
+                if (isNight) R.color.m3_surface_dark else R.color.m3_surface_light
+            )
+        )
         // Yazılım katmanı zayıf GPU'larda kaydırmayı yavaşlatır; donanım açık kalır.
         web.overScrollMode = WebView.OVER_SCROLL_IF_CONTENT_SCROLLS
 

@@ -79,18 +79,22 @@ class TabManager(
         if (index < 0) return
         _tabs.remove(tab)
         liveOrder.remove(tab)
+
+        // Önce geçerli sekmeyi değiştir, sonra WebView'i yok et: WebView
+        // yok edildiğinde odak başka bir görünüme taşınır ve odak
+        // dinleyicileri (adres çubuğu dahil) o anda eski sekmeyi okumasın.
+        if (current === tab) {
+            current = null
+            val next = _tabs.getOrNull(index) ?: _tabs.lastOrNull()
+            if (next != null) select(next) else newTab(prefs.homePage, false)
+        }
+
         tab.webView?.let {
             (it.parent as? ViewGroup)?.removeView(it)
             WebViewFactory.destroy(it)
         }
         release(tab)
         tab.savedState = null
-
-        if (current === tab) {
-            current = null
-            val next = _tabs.getOrNull(index) ?: _tabs.lastOrNull()
-            if (next != null) select(next) else newTab(prefs.homePage, false)
-        }
     }
 
     fun closeAll() {
