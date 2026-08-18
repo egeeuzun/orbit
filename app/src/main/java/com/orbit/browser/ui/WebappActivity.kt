@@ -12,9 +12,11 @@ import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.widget.FrameLayout
+import android.widget.Toast
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import com.orbit.browser.R
 import com.orbit.browser.adblock.AdblockService
 import com.orbit.browser.browser.CosmeticBridge
 import com.orbit.browser.browser.DownloadHelper
@@ -33,12 +35,10 @@ import com.orbit.browser.util.UrlUtils
  */
 class WebappActivity : ComponentActivity(), OrbitWebViewClient.Callbacks, OrbitChromeClient.Host {
 
-    companion object {
-        const val EXTRA_URL = "url"
-    }
-
     private lateinit var web: OrbitWebView
     private lateinit var fullscreenContainer: FrameLayout
+    private lateinit var adblock: AdblockService
+    private var adblockEnabled = false
     private var customView: View? = null
     private var customViewCallback: WebChromeClient.CustomViewCallback? = null
 
@@ -46,13 +46,14 @@ class WebappActivity : ComponentActivity(), OrbitWebViewClient.Callbacks, OrbitC
         super.onCreate(savedInstanceState)
 
         val target = intent.getStringExtra(EXTRA_URL)
+            ?: intent.data?.toString()
         if (target.isNullOrBlank() || !UrlUtils.isHttp(target)) {
             finish()
             return
         }
-
         val prefs = Prefs(this)
-        val adblock = AdblockService.get(this)
+        adblock = AdblockService.get(this)
+        adblockEnabled = prefs.adBlockEnabled
         adblock.start()
 
         val bridge = CosmeticBridge(adblock) { prefs.adBlockEnabled && prefs.cosmeticFiltering }
@@ -76,7 +77,7 @@ class WebappActivity : ComponentActivity(), OrbitWebViewClient.Callbacks, OrbitC
         setContentView(root)
 
         val tab = Tab(-1L, false).apply { pageUrl = target }
-        web.webViewClient = OrbitWebViewClient(tab, adblock, prefs, this)
+        web.webViewClient = OrbitWebViewClient(this, tab, adblock, prefs, this)
         web.webChromeClient = OrbitChromeClient(tab, this)
         web.setDownloadListener { url, ua, disposition, mime, size ->
             try {
@@ -108,7 +109,8 @@ class WebappActivity : ComponentActivity(), OrbitWebViewClient.Callbacks, OrbitC
         super.onNewIntent(intent)
         setIntent(intent)
         val target = intent.getStringExtra(EXTRA_URL)
-        if (!target.isNullOrBlank() && UrlUtils.isHttp(target)) {
+            ?: intent.data?.toString()
+        if (!target.isNullOrBlank() && UrlUtils.isHttp(target) && ::web.isInitialized) {
             web.loadUrl(target)
         }
     }
@@ -127,8 +129,12 @@ class WebappActivity : ComponentActivity(), OrbitWebViewClient.Callbacks, OrbitC
     }
 
     override fun onDestroy() {
-        web.destroy()
+        if (::web.isInitialized) web.destroy()
         super.onDestroy()
+    }
+
+    companion object {
+        const val EXTRA_URL = "url"
     }
 
     private fun hideSystemBars() {
@@ -167,7 +173,12 @@ class WebappActivity : ComponentActivity(), OrbitWebViewClient.Callbacks, OrbitC
     override fun onIcon(tab: Tab, icon: android.graphics.Bitmap?) = Unit
 
     override fun onNewWindow(url: String?): Boolean {
-        if (!url.isNullOrBlank() && UrlUtils.isHttp(url)) {
+        if (url.isNullOrBlank()) return false
+        if (adblockEnabled && adblock.engine.blocks(url, web.url.orEmpty(), "popup")) {
+            Toast.makeText(this, R.string.popup_blocked, Toast.LENGTH_SHORT).show()
+            return true
+        }
+        if (UrlUtils.isHttp(url)) {
             web.loadUrl(url)
             return true
         }

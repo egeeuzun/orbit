@@ -1,6 +1,18 @@
 # Изменения в форке / Changes in this fork
 
 ## Русский
+- **Русские фильтры по умолчанию**: добавлены AdGuard Russian
+  (https://filters.adtidy.org/extension/ublock/filters/1.txt) и RU AdList
+  (https://easylist-downloads.adblockplus.org/advblock.txt); оба включены по
+  умолчанию (каталог списков — 14 позиций); для существующих установок
+  автоматическая миграция включает их без ручных действий (в UI «Updated
+  today»).
+- **Блокировка рекламных попапов**: window.open на домены, заблокированные
+  движком с типом «popup», не открывает окно: событие потребляется в
+  onNewWindow и в MainActivity, и в WebappActivity, пользователю показывается
+  короткий тост «Advertising popup blocked». Фикс бага оригинала
+  (egeeuzun/orbit), где попапы открывались без фильтрации; для страниц с
+  невалидным источником (data: и т.п.) используется фиктивный источник.
 - **Webapp-режим** по ярлыку: сайт открывается полноэкранным окном без
   адресной строки и панелей, в отдельной задаче; адблок и скачивания работают;
   повторный запуск переиспользует окно.
@@ -28,6 +40,17 @@
   сохраняется (раньше onIcon был заглушкой).
 
 ## English
+- **Russian filters on by default**: two filter lists added — AdGuard Russian
+  (https://filters.adtidy.org/extension/ublock/filters/1.txt) and RU AdList
+  (https://easylist-downloads.adblockplus.org/advblock.txt); both enabled by
+  default (list catalog is now 14 items); existing installs get them via
+  automatic migration, no manual action needed (UI shows "Updated today").
+- **Ad popup blocking**: window.open on domains blocked by the engine with the
+  "popup" type no longer opens a window — the event is consumed in onNewWindow
+  in both MainActivity and WebappActivity, and the user gets a short
+  "Advertising popup blocked" toast. Fixes an original bug (egeeuzun/orbit)
+  where popups opened without filtering; pages with an invalid source (data:
+  etc.) use a fake source.
 - **Webapp mode** via home-screen shortcut: fullscreen site window with no
   address bar or panels, own task; adblock and downloads work; re-launch
   reuses the window.

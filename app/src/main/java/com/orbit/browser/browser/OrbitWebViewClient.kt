@@ -1,5 +1,6 @@
 package com.orbit.browser.browser
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.util.Log
 import android.net.Uri
@@ -21,6 +22,7 @@ import org.json.JSONObject
  * kez çağrılır; bu yüzden burada tahsis ve kilit en aza indirildi.
  */
 class OrbitWebViewClient(
+    private val context: Context,
     private val tab: Tab,
     private val adblock: AdblockService,
     private val prefs: Prefs,
@@ -73,6 +75,9 @@ class OrbitWebViewClient(
         view: WebView,
         request: WebResourceRequest
     ): WebResourceResponse? {
+        // Турбо: популярные CDN-библиотеки отдаются из локального кэша
+        // (эффективное значение с учётом пер-сайт профиля).
+        LibCache.match(context, prefs, request.url.toString())?.let { return it }
         // Kozmetik CSS isteğini yakala: Via'daki gibi <link> üzerinden
         // gelen CSS isteğine doğrudan stil yanıtı dönülür.
         val path = request.url.path

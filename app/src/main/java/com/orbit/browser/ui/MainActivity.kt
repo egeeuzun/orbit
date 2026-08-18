@@ -197,9 +197,14 @@ class MainActivity : AppCompatActivity(),
         if (customView != null) hideSystemBars()
         tabs.onResume()
         tabs.updateTheme()
-        // Ayarlardan dönülmüş olabilir: kozmetik çalışma zamanı canlı görünüme
-        // eklenir ya da kaldırılır.
-        tabs.current?.webView?.let { WebViewFactory.applyCosmeticRuntime(this, it, prefs) }
+        // Ayarlardan dönülmüş olabilir: kozmetik ve performans çalışma zamanı
+        // canlı görünüme eklenir ya da kaldırılır.
+        tabs.tabs.forEach { tab ->
+            tab.webView?.let {
+                WebViewFactory.applyCosmeticRuntime(this, it, prefs)
+                WebViewFactory.applyPerfRuntime(this, it, prefs)
+            }
+        }
         if (tabs.current?.isHome == true) binding.homeView.refresh(db)
         refreshChromeNow()
     }
@@ -594,6 +599,7 @@ class MainActivity : AppCompatActivity(),
                 ID_DESKTOP -> tab?.let {
                     it.desktopMode = !it.desktopMode
                     it.webView?.let { w -> WebViewFactory.setDesktopMode(w, it.desktopMode) }
+                    toast(getString(if (it.desktopMode) R.string.desktop_on else R.string.desktop_off))
                 }
                 ID_SHARE -> shareUrl(url, tab?.title)
                 ID_SETTINGS -> startActivity(Intent(this, SettingsActivity::class.java))
@@ -633,6 +639,7 @@ class MainActivity : AppCompatActivity(),
             .setIntent(
                 Intent(this, WebappActivity::class.java)
                     .setAction(Intent.ACTION_VIEW)
+                    .setData(android.net.Uri.parse(pageUrl))
                     .putExtra(WebappActivity.EXTRA_URL, pageUrl)
             )
             .build()
@@ -757,6 +764,12 @@ class MainActivity : AppCompatActivity(),
 
     override fun onNewWindow(url: String?): Boolean {
         if (url.isNullOrEmpty()) return false
+        val src = tabs.current?.pageUrl.orEmpty()
+        val page = if (UrlUtils.isHttp(src)) src else "https://local.invalid/"
+        if (prefs.adBlockEnabled && adblock.engine.blocks(url, page, "popup")) {
+            Toast.makeText(this, R.string.popup_blocked, Toast.LENGTH_SHORT).show()
+            return true
+        }
         tabs.newTab(url, tabs.current?.incognito == true, select = true)
         refreshChromeNow()
         return true

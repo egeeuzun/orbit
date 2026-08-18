@@ -3,6 +3,7 @@ package com.orbit.browser.ui
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
+import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.Toast
@@ -125,6 +126,33 @@ class SettingsActivity : AppCompatActivity() {
             getString(R.string.pref_block_images), getString(R.string.pref_block_images_sum),
             prefs.blockImages
         ) { prefs.blockImages = it }
+        switch(
+            getString(R.string.pref_optimizations), getString(R.string.pref_optimizations_sum),
+            prefs.optimizations
+        ) { prefs.optimizations = it }
+        switch(
+            getString(R.string.pref_turbo_gpu), getString(R.string.pref_turbo_gpu_sum),
+            prefs.gpuEase
+        ) { prefs.gpuEase = it }
+        warning(getString(R.string.pref_turbo_warning))
+        val turboRows = mutableListOf<RowSettingBinding>()
+        turboRows += switch(
+            getString(R.string.pref_turbo_content_vis), null, prefs.turboContentVis
+        ) { prefs.turboContentVis = it }
+        turboRows += switch(
+            getString(R.string.pref_turbo_no_anim), null, prefs.turboNoAnim
+        ) { prefs.turboNoAnim = it }
+        turboRows += switch(
+            getString(R.string.pref_turbo_lib_cache), null, prefs.turboLibCache
+        ) { prefs.turboLibCache = it }
+        switch(getString(R.string.pref_turbo), null, prefs.turboPack) {
+            prefs.turboPack = it
+            turboRows.forEach { r -> r.root.visibility = if (it) View.VISIBLE else View.GONE }
+        }
+        if (!prefs.turboPack) turboRows.forEach { r -> r.root.visibility = View.GONE }
+        action(
+            getString(R.string.pref_site_exceptions), getString(R.string.pref_site_exceptions_sum)
+        ) { chooseSiteExceptions() }
 
         header(R.string.settings_appearance)
         action(getString(R.string.pref_theme), themeName()) { chooseTheme() }
@@ -153,7 +181,7 @@ class SettingsActivity : AppCompatActivity() {
     private fun row(): RowSettingBinding =
         RowSettingBinding.inflate(layoutInflater, binding.settingsContainer, false)
 
-    private fun action(title: String, summary: String?, onClick: (() -> Unit)?) {
+    private fun action(title: String, summary: String?, onClick: (() -> Unit)?): RowSettingBinding {
         val r = row()
         r.rowTitle.text = title
         bindSummary(r, summary)
@@ -163,9 +191,15 @@ class SettingsActivity : AppCompatActivity() {
             r.root.isClickable = false
         }
         binding.settingsContainer.addView(r.root)
+        return r
     }
 
-    private fun switch(title: String, summary: String?, value: Boolean, onChange: (Boolean) -> Unit) {
+    private fun switch(
+        title: String,
+        summary: String?,
+        value: Boolean,
+        onChange: (Boolean) -> Unit
+    ): RowSettingBinding {
         val r = row()
         r.rowTitle.text = title
         bindSummary(r, summary)
@@ -178,6 +212,17 @@ class SettingsActivity : AppCompatActivity() {
             onSettingChanged(title)
         }
         binding.settingsContainer.addView(r.root)
+        return r
+    }
+
+    private fun warning(text: String) {
+        val tv = LayoutInflater.from(this)
+            .inflate(R.layout.row_header, binding.settingsContainer, false) as android.widget.TextView
+        tv.text = text
+        tv.setTextColor(android.graphics.Color.rgb(200, 60, 50))
+        tv.textSize = 13f
+        tv.setPadding(tv.paddingLeft, (tv.paddingTop * 1.4f).toInt(), tv.paddingRight, tv.paddingBottom)
+        binding.settingsContainer.addView(tv)
     }
 
     private fun bindSummary(r: RowSettingBinding, summary: String?) {
@@ -301,6 +346,89 @@ class SettingsActivity : AppCompatActivity() {
         val count = prefs.customFilterUrls.size
         return if (count == 0) getString(R.string.pref_custom_urls_sum)
         else getString(R.string.custom_urls_added, count)
+    }
+
+    private fun chooseSiteExceptions() {
+        val hosts = prefs.siteOverrides.keys.sorted()
+        val names = if (hosts.isEmpty()) arrayOf(getString(R.string.no_exceptions)) else hosts.toTypedArray()
+        AlertDialog.Builder(this)
+            .setTitle(R.string.pref_site_exceptions)
+            .setItems(names) { _, which -> if (hosts.isNotEmpty()) editSiteProfile(hosts[which]) }
+            .setPositiveButton(R.string.add_site) { _, _ -> addSiteException() }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun addSiteException() {
+        val input = EditText(this).apply {
+            hint = "example.com"
+            minLines = 1
+        }
+        AlertDialog.Builder(this)
+            .setTitle(R.string.add_site)
+            .setView(pad(input))
+            .setPositiveButton(R.string.save) { _, _ ->
+                val host = input.text.toString().trim().trimStart('.').lowercase()
+                if (host.isNotEmpty() && !host.contains('/')) {
+                    val ov = prefs.siteOverrides.toMutableMap()
+                    if (!ov.containsKey(host)) ov[host] = emptyMap()
+                    prefs.siteOverrides = ov
+                    toast(getString(R.string.saved))
+                }
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun editSiteProfile(host: String) {
+        val overrides = prefs.siteOverrides.toMutableMap()
+        val current = overrides[host] ?: emptyMap()
+        fun global(feature: String): Boolean = when (feature) {
+            Prefs.FEATURE_BASE -> prefs.optimizations
+            Prefs.FEATURE_GPU -> prefs.gpuEase
+            Prefs.FEATURE_LIB -> prefs.turboPack && prefs.turboLibCache
+            Prefs.FEATURE_CV -> prefs.turboPack && prefs.turboContentVis
+            else -> prefs.turboPack && prefs.turboNoAnim
+        }
+        fun eff(feature: String) = current[feature] ?: global(feature)
+
+        val container = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        val labels = listOf(
+            R.string.pref_optimizations to Prefs.FEATURE_BASE,
+            R.string.pref_turbo_content_vis to Prefs.FEATURE_CV,
+            R.string.pref_turbo_no_anim to Prefs.FEATURE_ANIM,
+            R.string.pref_turbo_gpu to Prefs.FEATURE_GPU,
+            R.string.pref_turbo_lib_cache to Prefs.FEATURE_LIB
+        )
+        val switches = labels.map { (titleRes, feature) ->
+            val sw = android.widget.Switch(this).apply {
+                text = getString(titleRes)
+                isChecked = eff(feature)
+            }
+            container.addView(
+                sw,
+                LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                )
+            )
+            feature to sw
+        }
+        AlertDialog.Builder(this)
+            .setTitle(host)
+            .setView(container)
+            .setPositiveButton(R.string.save) { _, _ ->
+                val newFlags = mutableMapOf<String, Boolean>()
+                switches.forEach { (feature, sw) -> newFlags[feature] = sw.isChecked }
+                overrides[host] = newFlags
+                prefs.siteOverrides = overrides
+            }
+            .setNeutralButton(R.string.reset) { _, _ ->
+                overrides.remove(host)
+                prefs.siteOverrides = overrides
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
     }
 
     private fun editCustomFilterUrls() {

@@ -17,15 +17,17 @@ object DownloadHelper {
         mimeType: String?,
         size: Long
     ) {
+        val name = URLUtil.guessFileName(url, contentDisposition, mimeType)
         val request = DownloadManager.Request(Uri.parse(url)).apply {
             setMimeType(mimeType)
+            setTitle(name)
             userAgent?.let { addRequestHeader("User-Agent", it) }
             setNotificationVisibility(
                 DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED
             )
             setDestinationInExternalPublicDir(
                 Environment.DIRECTORY_DOWNLOADS,
-                URLUtil.guessFileName(url, contentDisposition, mimeType)
+                name
             )
         }
         val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager

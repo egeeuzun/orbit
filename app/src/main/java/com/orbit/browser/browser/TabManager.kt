@@ -125,7 +125,7 @@ class TabManager(
         val web = WebViewFactory.create(context, prefs, bridge, tab.incognito)
         bridge.attach(web)
         tab.bridge = bridge
-        web.webViewClient = OrbitWebViewClient(tab, adblock, prefs, clientCallbacks)
+        web.webViewClient = OrbitWebViewClient(context, tab, adblock, prefs, clientCallbacks)
         web.webChromeClient = OrbitChromeClient(tab, chromeHost)
         web.setDownloadListener { url, ua, disposition, mime, size ->
             onDownload(url, ua, disposition, mime, size)
