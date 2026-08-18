@@ -580,7 +580,7 @@ class MainActivity : AppCompatActivity(),
                 ID_NEW_INCOGNITO -> {
                     tabs.newTab(Prefs.HOME_URL, incognito = true)
                     refreshChrome()
-                    toast(getString(R.string.incognito_tab))
+                    toast(getString(R.string.incognito_tab) + "\n" + getString(R.string.incognito_cookies_note))
                 }
                 ID_BOOKMARK -> {
                     if (bookmarked) {
@@ -735,12 +735,24 @@ class MainActivity : AppCompatActivity(),
 
     override fun onExternalIntent(uri: Uri): Boolean = openExternally(uri)
 
-    private fun openExternally(uri: Uri): Boolean = try {
-        startActivity(Intent(Intent.ACTION_VIEW, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-        true
-    } catch (_: ActivityNotFoundException) {
-        toast(getString(R.string.no_app_for_link))
-        true
+    private fun openExternally(uri: Uri): Boolean {
+        val scheme = uri.scheme?.lowercase() ?: return true
+        val allowed = setOf(
+            "tel", "mailto", "sms", "mms", "geo", "market",
+            "whatsapp", "tg", "t.me", "viber", "vk", "vksms", "ok",
+            "skype", "zoommtg", "intent", "maps"
+        )
+        if (scheme !in allowed) {
+            toast(getString(R.string.no_app_for_link))
+            return true
+        }
+        return try {
+            startActivity(Intent(Intent.ACTION_VIEW, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            true
+        } catch (_: ActivityNotFoundException) {
+            toast(getString(R.string.no_app_for_link))
+            true
+        }
     }
 
     // ------------------------------------------------- WebChromeClient geri çağrıları
@@ -776,8 +788,10 @@ class MainActivity : AppCompatActivity(),
     }
 
     override fun onCreateNewTab(): Tab? {
-        val newTab = tabs.newTab(null, tabs.current?.incognito == true, select = true)
-        refreshChromeNow()
+        // Сразу с готовым WebView: transport из window.open должен получить
+        // живой view, иначе открывается пустой таб с главной.
+        val newTab = tabs.newWebTab()
+        if (newTab != null) refreshChromeNow()
         return newTab
     }
 

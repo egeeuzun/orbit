@@ -1,6 +1,13 @@
 # Изменения в форке / Changes in this fork
 
 ## Русский
+- **Приватность**: история, закладки и открытые вкладки больше не уходят в
+  облачный бэкап Google и не переносятся на новое устройство (сохраняется
+  только файл настроек); вкладка «Приватная» честно сообщает, что куки и
+  логины остаются общими с обычными вкладками.
+- **Безопасность**: release подписывается реальным ключом из
+  `keystore.properties` (вне репозитория), ключ подписи ротирован; внешние
+  ссылки (`tel:/mailto:/…`) открываются только для известных схем.
 - **Русские фильтры по умолчанию**: добавлены AdGuard Russian
   (https://filters.adtidy.org/extension/ublock/filters/1.txt) и RU AdList
   (https://easylist-downloads.adblockplus.org/advblock.txt); оба включены по
@@ -40,6 +47,13 @@
   сохраняется (раньше onIcon был заглушкой).
 
 ## English
+- **Privacy**: browsing history, bookmarks and open tabs are no longer uploaded
+  to Google cloud backup or device transfer (only the settings file is backed
+  up); the "Private" tab honestly notes that cookies and logins are shared with
+  regular tabs.
+- **Security**: release is signed with a real key from `keystore.properties`
+  (outside the repo), the signing key was rotated; external links
+  (`tel:/mailto:/...`) only open for known schemes.
 - **Russian filters on by default**: two filter lists added — AdGuard Russian
   (https://filters.adtidy.org/extension/ublock/filters/1.txt) and RU AdList
   (https://easylist-downloads.adblockplus.org/advblock.txt); both enabled by

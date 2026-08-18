@@ -75,6 +75,22 @@ class OrbitWebViewClient(
         view: WebView,
         request: WebResourceRequest
     ): WebResourceResponse? {
+        // Файловая навигация (.apk и пр.): сайты без Content-Disposition
+        // (auroraoss.com отдаёт APK как octet-stream) не запускают системный
+        // DownloadListener, а WebView отражал бы пустую страницу. Перехват
+        // ЛЮБОЙ main-frame навигации на такой URL (клики, target=_blank,
+        // редиректы) — скачивание через DownloadManager, навигация потреблена.
+        if (request.isForMainFrame && isFileUrl(request.url)) {
+            DownloadHelper.enqueue(context, request.url.toString(), null, null, null, -1)
+            return WebResourceResponse(
+                "application/octet-stream",
+                "utf-8",
+                200,
+                "OK",
+                null,
+                java.io.ByteArrayInputStream(ByteArray(0))
+            )
+        }
         // Турбо: популярные CDN-библиотеки отдаются из локального кэша
         // (эффективное значение с учётом пер-сайт профиля).
         LibCache.match(context, prefs, request.url.toString())?.let { return it }
@@ -154,6 +170,13 @@ class OrbitWebViewClient(
             return callbacks.onExternalIntent(uri)
         }
         return false
+    }
+
+    private fun isFileUrl(uri: android.net.Uri): Boolean {
+        val seg = uri.lastPathSegment ?: return false
+        val dot = seg.lastIndexOf('.')
+        if (dot < 0) return false
+        return seg.substring(dot + 1).lowercase() in FILE_EXTENSIONS
     }
 
     override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
@@ -243,6 +266,13 @@ class OrbitWebViewClient(
     private companion object {
         const val BLANK = "about:blank"
         const val TAG = "OrbitBlock"
+
+        private val FILE_EXTENSIONS = setOf(
+            "apk", "zip", "rar", "7z", "tar", "gz", "bz2", "xz", "zst",
+            "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "odt", "ods",
+            "exe", "msi", "iso", "img", "bin", "deb", "rpm", "jar", "dmg",
+            "mp3", "mp4", "mkv", "flac", "ogg", "wav", "webm"
+        )
 
         /** Bütün engellemelerde paylaşılan iptal yanıtı; gövdesi yok. */
         val BLOCKED = WebResourceResponse("text/plain", "utf-8", null)

@@ -13,7 +13,7 @@
 
     <!-- Menu -->
     <string name="new_tab">New tab</string>
-    <string name="new_incognito_tab">New incognito tab</string>
+    <string name="new_incognito_tab">Private tab</string>
     <string name="close_tab">Close tab</string>
     <string name="close_all_tabs">Close all tabs</string>
     <string name="bookmarks">Bookmarks</string>
@@ -179,7 +179,8 @@
     <string name="bookmark_removed">Bookmark removed</string>
     <string name="data_cleared">Browsing data cleared</string>
     <string name="download_started">Download started</string>
-    <string name="incognito_tab">Incognito tab</string>
+    <string name="incognito_tab">Private tab: no history or cache saved</string>
+    <string name="incognito_cookies_note">Note: cookies and logins are shared with regular tabs</string>
     <string name="no_app_for_link">No app available to handle this link</string>
     <string name="find_hint">Find in page</string>
 </resources>

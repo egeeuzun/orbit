@@ -13,6 +13,10 @@ class Prefs(context: Context) {
         context.applicationContext.getSharedPreferences("orbit", Context.MODE_PRIVATE)
             .also { Hot.attach(it) }
 
+    /** Сессии открытых вкладок — отдельный файл вне облачного бэкапа. */
+    private val spSession: SharedPreferences =
+        context.applicationContext.getSharedPreferences("orbit_session", Context.MODE_PRIVATE)
+
     init {
         // Новые defaultOn-списки каталога на уже установленной версии
         // не включены: набор сохранён в SharedPreferences. Одноразово
@@ -249,8 +253,10 @@ class Prefs(context: Context) {
         set(v) = sp.edit { putBoolean(KEY_RESTORE_TABS, v) }
 
     var savedSession: String
-        get() = sp.getString(KEY_SAVED_SESSION, "")!!
-        set(v) = sp.edit { putString(KEY_SAVED_SESSION, v) }
+        // URI открытых вкладок — приватность: отдельный SharedPreferences,
+        // который не попадает в облачный бэкап и перенос (см. backup_rules).
+        get() = spSession.getString(KEY_SAVED_SESSION, "")!!
+        set(v) = spSession.edit { putString(KEY_SAVED_SESSION, v) }
 
     /**
      * İstek başına okunan ayarların bellek içi kopyası.

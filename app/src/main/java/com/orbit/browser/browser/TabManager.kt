@@ -48,6 +48,20 @@ class TabManager(
         return tab
     }
 
+    /** Закрытая вкладка с готовым WebView — для WebChromeClient transport
+     *  (window.open): без WebView transport вернул бы false, и WebView ушёл бы
+     *  в пустой таб. WebView создаётся сразу, чтобы перехваты сработали. */
+    fun newWebTab(): Tab? {
+        val tab = Tab(nextId++, current?.incognito == true)
+        _tabs.add(tab)
+        try {
+            wake(tab)
+        } catch (_: Throwable) {
+            return null
+        }
+        return tab
+    }
+
     fun select(tab: Tab) {
         if (current === tab && (tab.isLive || idleHome(tab))) return
         current?.let { detachView(it) }

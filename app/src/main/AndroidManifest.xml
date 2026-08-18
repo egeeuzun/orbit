@@ -83,7 +83,6 @@
         <activity
             android:name=".ui.WebappActivity"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|smallestScreenSize|density|uiMode"
-            android:exported="true"
             android:launchMode="singleTop"
             android:documentLaunchMode="intoExisting"
             android:taskAffinity="com.orbit.browser.webapp" />
