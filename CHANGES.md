@@ -1,6 +1,8 @@
-# Изменения в форке / Changes in this fork
+# История изменений / Changelog
 
-## Русский
+## 2.0.0 — 22 августа 2026 / 22 August 2026
+
+### Русский
 - **Приватность**: история, закладки и открытые вкладки больше не уходят в
   облачный бэкап Google и не переносятся на новое устройство (сохраняется
   только файл настроек); вкладка «Приватная» честно сообщает, что куки и
@@ -21,8 +23,8 @@
 - **Блокировка рекламных попапов**: window.open на домены, заблокированные
   движком с типом «popup», не открывает окно: событие потребляется в
   onNewWindow и в MainActivity, и в WebappActivity, пользователю показывается
-  короткий тост «Advertising popup blocked». Фикс бага оригинала
-  (egeeuzun/orbit), где попапы открывались без фильтрации; для страниц с
+  короткий тост «Advertising popup blocked». Исправляет баг версии 1.228,
+  где попапы открывались без фильтрации; для страниц с
   невалидным источником (data: и т.п.) используется фиктивный источник.
 - **Webapp-режим** по ярлыку: сайт открывается полноэкранным окном без
   адресной строки и панелей, в отдельной задаче; адблок и скачивания работают;
@@ -50,7 +52,7 @@
   (без дрожания); тёмный about:blank по теме; favicon теперь реально
   сохраняется (раньше onIcon был заглушкой).
 
-## English
+### English
 - **Privacy**: browsing history, bookmarks and open tabs are no longer uploaded
   to Google cloud backup or device transfer (only the settings file is backed
   up); the "Private" tab honestly notes that cookies and logins are shared with
@@ -70,8 +72,8 @@
 - **Ad popup blocking**: window.open on domains blocked by the engine with the
   "popup" type no longer opens a window — the event is consumed in onNewWindow
   in both MainActivity and WebappActivity, and the user gets a short
-  "Advertising popup blocked" toast. Fixes an original bug (egeeuzun/orbit)
-  where popups opened without filtering; pages with an invalid source (data:
+  "Advertising popup blocked" toast. Fixes a bug in 1.228 where
+  popups opened without filtering; pages with an invalid source (data:
   etc.) use a fake source.
 - **Webapp mode** via home-screen shortcut: fullscreen site window with no
   address bar or panels, own task; adblock and downloads work; re-launch
