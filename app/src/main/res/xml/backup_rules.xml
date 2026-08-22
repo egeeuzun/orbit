@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <full-backup-content>
     <include domain="sharedpref" path="orbit.xml" />
-    <include domain="database" path="orbit.db" />
+    <!-- История и открытые вкладки — приватность: в облако/перенос не уходят. -->
+    <exclude domain="sharedpref" path="orbit_session.xml" />
+    <exclude domain="database" path="orbit.db" />
     <!-- Derlenmiş filtre motoru yedeklenmez; cihazda yeniden üretilir. -->
     <exclude domain="file" path="engine.bin" />
     <exclude domain="file" path="filters/" />

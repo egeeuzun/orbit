@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -21,7 +23,22 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            signingConfig = signingConfigs.getByName("debug")
+            // Подпись — реальным ключом из keystore.properties (вне git),
+            // а не debug. Если файла нет — собранный APK подписывается
+            // вручную через apksigner (см. docs/pipeline/brief.md).
+            val ks = rootProject.file("keystore.properties")
+            if (ks.exists()) {
+                val props = Properties().apply {
+                    ks.inputStream().use { load(it) }
+                }
+                signingConfigs.create("release") {
+                    storeFile = file(props.getProperty("storeFile"))
+                    storePassword = props.getProperty("storePassword")
+                    keyAlias = props.getProperty("keyAlias")
+                    keyPassword = props.getProperty("keyPassword")
+                }
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
         debug {
             applicationIdSuffix = ".debug"

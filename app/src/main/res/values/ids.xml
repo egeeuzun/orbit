@@ -2,4 +2,5 @@
 <resources>
     <!-- Görünüme iliştirilen belge başı kozmetik betiğinin tutamacı. -->
     <item name="orbit_cosmetic_script" type="id" />
+    <item name="orbit_perf_script" type="id" />
 </resources>

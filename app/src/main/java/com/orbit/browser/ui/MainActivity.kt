@@ -1,6 +1,7 @@
 package com.orbit.browser.ui
 
 import android.app.Activity
+import android.app.PendingIntent
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.graphics.Bitmap
@@ -20,11 +21,22 @@ import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.pm.ShortcutInfoCompat
+import androidx.core.content.pm.ShortcutManagerCompat
+import androidx.core.graphics.drawable.IconCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
+import androidx.core.view.updatePadding
 import androidx.core.widget.doAfterTextChanged
 import androidx.recyclerview.widget.LinearLayoutManager
+import kotlin.math.max
 import com.orbit.browser.R
 import com.orbit.browser.adblock.AdblockService
 import com.orbit.browser.browser.OrbitChromeClient
+import com.orbit.browser.browser.DownloadHelper
+import com.orbit.browser.browser.FaviconStore
 import com.orbit.browser.browser.OrbitWebViewClient
 import com.orbit.browser.browser.Tab
 import com.orbit.browser.browser.TabManager
@@ -50,6 +62,9 @@ class MainActivity : AppCompatActivity(),
     private var customViewCallback: WebChromeClient.CustomViewCallback? = null
     private var fileCallback: ValueCallback<Array<Uri>>? = null
 
+    /** Tam ekrana girilirken kaydedilen sayfa kaydırma konumu. */
+    private var fullscreenScrollY = 0
+
     /** Bir kare içinde birden çok tazeleme isteği tek çağrıya iner. */
     private var chromePending = false
 
@@ -58,8 +73,6 @@ class MainActivity : AppCompatActivity(),
 
     /** Adres çubuğu önerileri eşzamansız gelir; eskimiş sonuçlar atılır. */
     private var suggestToken = 0
-
-    private val engineListener: (AdblockService.State) -> Unit = { updateShield() }
 
     private val filePicker = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -83,6 +96,10 @@ class MainActivity : AppCompatActivity(),
 
     private var appliedNightMode = -1
 
+    /** Стартовый экран показывает «Loading filters…», пока движок не собран;
+     * listener поднимает перерисовку, когда состояние меняется (READY → «Total…»). */
+    private val engineListener: (AdblockService.State) -> Unit = { refreshChrome() }
+
     // ------------------------------------------------------------------ yaşam döngüsü
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -97,6 +114,7 @@ class MainActivity : AppCompatActivity(),
 
         prefs = Prefs(this)
         adblock = AdblockService.get(this)
+        adblock.addListener(engineListener)
         db = BrowserDb.get(this)
 
         tabs = TabManager(
@@ -114,7 +132,6 @@ class MainActivity : AppCompatActivity(),
         setupHome()
         setupBackHandling()
 
-        adblock.addListener(engineListener)
         val initialUrl = startUrl(intent)
         if (initialUrl != null) {
             tabs.newTab(initialUrl)
@@ -175,11 +192,19 @@ class MainActivity : AppCompatActivity(),
             return
         }
         setupSystemBars()
+        // Tam ekran video sırasında uygulamadan çıkıp dönüldüyse sistem
+        // çubukları geri gelmiş olabilir; yeniden gizle.
+        if (customView != null) hideSystemBars()
         tabs.onResume()
         tabs.updateTheme()
-        // Ayarlardan dönülmüş olabilir: kozmetik çalışma zamanı canlı görünüme
-        // eklenir ya da kaldırılır.
-        tabs.current?.webView?.let { WebViewFactory.applyCosmeticRuntime(this, it, prefs) }
+        // Ayarlardan dönülmüş olabilir: kozmetik ve performans çalışma zamanı
+        // canlı görünüme eklenir ya da kaldırılır.
+        tabs.tabs.forEach { tab ->
+            tab.webView?.let {
+                WebViewFactory.applyCosmeticRuntime(this, it, prefs)
+                WebViewFactory.applyPerfRuntime(this, it, prefs)
+            }
+        }
         if (tabs.current?.isHome == true) binding.homeView.refresh(db)
         refreshChromeNow()
     }
@@ -200,9 +225,36 @@ class MainActivity : AppCompatActivity(),
 
     private fun setupSystemBars() {
         val isNight = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        if (android.os.Build.VERSION.SDK_INT >= 28) {
+            window.attributes.layoutInDisplayCutoutMode =
+                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+        }
         val controller = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
         controller.isAppearanceLightStatusBars = !isNight
         controller.isAppearanceLightNavigationBars = !isNight
+
+        // The page area sits below the status bar / camera cutout; the bottom
+        // omnibox bar sits above the navigation bar and the keyboard.
+        // Tam ekran (video) sırasında sistem çubuklarının gizlenmesi insetleri
+        // sıfırlar; o an layout'u değiştirirsek WebView yeniden düzenlenir ve
+        // sayfa en üste atlar — bu yüzden tam ekranda padding dondurulur.
+        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { _, insets ->
+            if (customView == null) {
+                val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+                val cutout = insets.getInsets(WindowInsetsCompat.Type.displayCutout())
+                val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
+                val top = max(systemBars.top, cutout.top)
+                binding.browserRoot.setPadding(0, top, 0, 0)
+                binding.progressBar.setPadding(0, top, 0, 0)
+                binding.bottomContainer.updatePadding(
+                    left = systemBars.left,
+                    right = systemBars.right,
+                    bottom = max(systemBars.bottom, max(cutout.bottom, ime.bottom))
+                )
+            }
+            insets
+        }
     }
 
     override fun onTrimMemory(level: Int) {
@@ -237,9 +289,13 @@ class MainActivity : AppCompatActivity(),
 
         binding.urlBar.setOnFocusChangeListener { _, hasFocus ->
             if (hasFocus) {
-                showToolbars()
                 isProgrammaticTextChange = true
-                binding.urlBar.setText(tabs.current?.pageUrl.orEmpty())
+                val focusedTab = tabs.current
+                // Başlangıç ekranında eski sekmenin URL'si asla doldurulmaz;
+                // odak yarışı kapanan sekmeyi okusa bile metin boş kalır.
+                binding.urlBar.setText(
+                    if (focusedTab != null && !focusedTab.isHome) focusedTab.pageUrl else ""
+                )
                 binding.urlBar.selectAll()
                 isProgrammaticTextChange = false
             } else {
@@ -269,14 +325,19 @@ class MainActivity : AppCompatActivity(),
 
         binding.reloadButton.setOnClickListener {
             val web = tabs.current?.webView ?: return@setOnClickListener
-            if ((tabs.current?.progress ?: 100) < 100) web.stopLoading() else web.reload()
+            // Yüklenirken düğme durdur işlevi görür; asılı kalan yüklemeler
+            // böylece iptal edilebilir.
+            if (binding.progressBar.visibility == View.VISIBLE) {
+                web.stopLoading()
+                binding.progressBar.visibility = View.GONE
+                refreshChromeNow()
+            } else {
+                web.reload()
+            }
         }
-        binding.shieldButton.setOnClickListener { showShieldDialog() }
     }
 
     private fun setupNavBar() {
-        binding.navBack.setOnClickListener { goBack() }
-        binding.navForward.setOnClickListener { tabs.current?.webView?.goForward() }
         binding.navHome.setOnClickListener { load(Prefs.HOME_URL) }
         binding.navTabs.setOnClickListener { showTabs() }
         binding.navMenu.setOnClickListener { showMenu() }
@@ -300,10 +361,17 @@ class MainActivity : AppCompatActivity(),
                         hideSuggestions()
                         binding.urlBar.clearFocus()
                     }
+                    // Asılı kalan bir yükleme varsa "geri" önce yüklemeyi
+                    // durdurur; ikinci "geri" gezinir.
+                    binding.progressBar.visibility == View.VISIBLE -> {
+                        tabs.current?.webView?.stopLoading()
+                        binding.progressBar.visibility = View.GONE
+                        refreshChromeNow()
+                    }
                     tabs.current?.webView?.canGoBack() == true -> goBack()
                     tabs.size > 1 -> {
                         tabs.current?.let { tabs.close(it) }
-                        refreshChrome()
+                        refreshChromeNow()
                     }
                     else -> finish()
                 }
@@ -348,47 +416,18 @@ class MainActivity : AppCompatActivity(),
         }
     }
 
-    private fun hideToolbars() {
-        if (binding.topBar.visibility == View.VISIBLE) {
-            hideSuggestions()
-            binding.topBar.visibility = View.GONE
-            binding.bottomBar.visibility = View.GONE
-        }
-    }
-
-    private fun showToolbars() {
-        if (binding.topBar.visibility != View.VISIBLE) {
-            binding.topBar.visibility = View.VISIBLE
-            binding.bottomBar.visibility = View.VISIBLE
-        }
-    }
-
-    private fun attachScrollListener(web: com.orbit.browser.browser.OrbitWebView?) {
-        if (web == null) return
-        web.onScrollListener = { dy, scrollY ->
-            if (binding.homeView.visibility == View.VISIBLE || binding.urlBar.hasFocus()) {
-                showToolbars()
-            } else if (scrollY <= 20) {
-                showToolbars()
-            } else if (dy > 14 && scrollY > 100) {
-                hideToolbars()
-            } else if (dy < -14) {
-                showToolbars()
-            }
-        }
-    }
-
     /** Adres satırı, gezinme düğmeleri ve başlangıç ekranını eşitler. */
     private fun refreshChromeNow() {
         val tab = tabs.current
         val home = tab?.isHome == true
         updateSearchHint()
-        attachScrollListener(tab?.webView)
 
         if (home) {
-            showToolbars()
             if (binding.homeView.visibility != View.VISIBLE) {
                 binding.homeView.visibility = View.VISIBLE
+                // Sekme kapanınca odak urlBar'a kaçmasın; adres çubuğu boş
+                // ve odaksız kalır.
+                binding.homeView.requestFocus()
             }
             if (!homeShown) {
                 homeShown = true
@@ -420,22 +459,19 @@ class MainActivity : AppCompatActivity(),
             binding.tabCount.text = countStr
         }
 
-        val canGoBack = tab?.webView?.canGoBack() == true || !home
-        if (binding.navBack.isEnabled != canGoBack) {
-            binding.navBack.isEnabled = canGoBack
-        }
-
-        val canGoForward = tab?.webView?.canGoForward() == true
-        if (binding.navForward.isEnabled != canGoForward) {
-            binding.navForward.isEnabled = canGoForward
-            binding.navForward.alpha = if (canGoForward) 1f else 0.35f
-        }
-
         val reloadVis = if (home) View.GONE else View.VISIBLE
         if (binding.reloadButton.visibility != reloadVis) {
             binding.reloadButton.visibility = reloadVis
         }
-        updateShield()
+        updateReloadIcon()
+    }
+
+    /** Yükleme sırasında düğme "durdur" (X), boştayken "yenile" ikonu gösterir. */
+    private fun updateReloadIcon() {
+        val loading = binding.progressBar.visibility == View.VISIBLE
+        binding.reloadButton.setImageResource(
+            if (loading) R.drawable.ic_close else R.drawable.ic_refresh
+        )
     }
 
     private fun updateSearchHint() {
@@ -453,18 +489,6 @@ class MainActivity : AppCompatActivity(),
         AdblockService.State.LOADING -> getString(R.string.engine_loading)
         AdblockService.State.FAILED -> getString(R.string.engine_failed)
         AdblockService.State.IDLE -> ""
-    }
-
-    private fun updateShield() {
-        val tab = tabs.current
-        val host = UrlUtils.host(tab?.displayUrl())
-        val isAllowlisted = if (host.isNotEmpty()) prefs.isAllowlisted(host) else false
-        val blocking = prefs.adBlockEnabled && !isAllowlisted
-        binding.shieldButton.setImageResource(
-            if (blocking) R.drawable.ic_shield else R.drawable.ic_shield_off
-        )
-        binding.shieldButton.alpha =
-            if (adblock.state == AdblockService.State.READY) 1f else 0.4f
     }
 
     // ------------------------------------------------------------------ kalkan
@@ -485,7 +509,7 @@ class MainActivity : AppCompatActivity(),
                 if (host.isNotEmpty()) {
                     prefs.setAllowlisted(host, !active)
                     tab.allowlisted = !active
-                    updateShield()
+                    refreshChrome()
                     tab.webView?.reload()
                 }
             }
@@ -501,7 +525,16 @@ class MainActivity : AppCompatActivity(),
         val hasPage = url.isNotEmpty() && tab?.isHome != true
         val bookmarked = hasPage && db.isBookmarked(url)
 
+        val shieldHost = UrlUtils.host(tab?.displayUrl())
+        val shieldAllowlisted = shieldHost.isNotEmpty() && prefs.isAllowlisted(shieldHost)
+        val shieldBlocking = prefs.adBlockEnabled && !shieldAllowlisted
+
         val items = listOf(
+            MenuSheet.Item(
+                ID_SHIELD,
+                if (shieldBlocking) R.drawable.ic_shield else R.drawable.ic_shield_off,
+                getString(R.string.shield_title)
+            ),
             MenuSheet.Item(ID_NEW_TAB, R.drawable.ic_add, getString(R.string.new_tab)),
             MenuSheet.Item(
                 ID_NEW_INCOGNITO, R.drawable.ic_incognito,
@@ -520,8 +553,11 @@ class MainActivity : AppCompatActivity(),
                 ID_FIND, R.drawable.ic_find, getString(R.string.find_in_page),
                 enabled = hasPage
             ),
+            MenuSheet.Item(ID_TRANSLATE, R.drawable.ic_translate, getString(R.string.translate_page),
+                enabled = hasPage
+            ),
             MenuSheet.Item(
-                ID_TRANSLATE, R.drawable.ic_translate, getString(R.string.translate_page),
+                ID_ADD_HOME, R.drawable.ic_add, getString(R.string.add_to_home),
                 enabled = hasPage
             ),
             MenuSheet.Item(
@@ -539,11 +575,12 @@ class MainActivity : AppCompatActivity(),
 
         MenuSheet(this).show(items) { id ->
             when (id) {
+                ID_SHIELD -> showShieldDialog()
                 ID_NEW_TAB -> { tabs.newTab(Prefs.HOME_URL); refreshChrome() }
                 ID_NEW_INCOGNITO -> {
                     tabs.newTab(Prefs.HOME_URL, incognito = true)
                     refreshChrome()
-                    toast(getString(R.string.incognito_tab))
+                    toast(getString(R.string.incognito_tab) + "\n" + getString(R.string.incognito_cookies_note))
                 }
                 ID_BOOKMARK -> {
                     if (bookmarked) {
@@ -558,9 +595,11 @@ class MainActivity : AppCompatActivity(),
                 ID_HISTORY -> openList(ListActivity.MODE_HISTORY)
                 ID_FIND -> showFindDialog()
                 ID_TRANSLATE -> showTranslateSheet()
+                ID_ADD_HOME -> addToHomeScreen()
                 ID_DESKTOP -> tab?.let {
                     it.desktopMode = !it.desktopMode
                     it.webView?.let { w -> WebViewFactory.setDesktopMode(w, it.desktopMode) }
+                    toast(getString(if (it.desktopMode) R.string.desktop_on else R.string.desktop_off))
                 }
                 ID_SHARE -> shareUrl(url, tab?.title)
                 ID_SETTINGS -> startActivity(Intent(this, SettingsActivity::class.java))
@@ -577,6 +616,40 @@ class MainActivity : AppCompatActivity(),
         TranslateSheet(this, url) { translateUrl ->
             load(translateUrl)
         }.show()
+    }
+
+    /**
+     * Masaüstü kısayolu: kimlik = host, ikon = favicon (yoksa uygulama ikonu).
+     * Aynı host için tekrar eklenirse mevcut kısayol güncellenir.
+     */
+    private fun addToHomeScreen() {
+        val tab = tabs.current ?: return
+        val pageUrl = tab.pageUrl
+        val host = UrlUtils.host(pageUrl)
+        if (host.isEmpty() || !UrlUtils.isHttp(pageUrl)) return
+
+        val icon = FaviconStore.load(this, host)
+            ?.let { IconCompat.createWithBitmap(it) }
+            ?: IconCompat.createWithResource(this, R.mipmap.ic_launcher)
+
+        val label = tab.title.ifBlank { host }
+        val shortcut = ShortcutInfoCompat.Builder(this, host)
+            .setShortLabel(label)
+            .setIcon(icon)
+            .setIntent(
+                Intent(this, WebappActivity::class.java)
+                    .setAction(Intent.ACTION_VIEW)
+                    .setData(android.net.Uri.parse(pageUrl))
+                    .putExtra(WebappActivity.EXTRA_URL, pageUrl)
+            )
+            .build()
+
+        // Всегда системный диалог подтверждения: так «Add» гарантированно
+        // даёт иконку, а состояние кеша не может разойтись со столом
+        // (например, после ручного удаления ярлыка). Повторное «Add»
+        // снова спрашивает — подтвердил дважды = две иконки.
+        val ok = ShortcutManagerCompat.requestPinShortcut(this, shortcut, null)
+        toast(if (ok) getString(R.string.shortcut_added) else getString(R.string.shortcut_failed))
     }
 
     private fun openList(mode: String) {
@@ -620,8 +693,12 @@ class MainActivity : AppCompatActivity(),
                 refreshChrome()
             },
             onClose = { tab ->
+                // Sekme kapandığında adres çubuğu anında (bir sonraki kareyi
+                // beklemeden) yeni geçerli sekmeye eşitlenir; eski URL
+                // kalmaz. TabManager.close önce geçerli sekmeyi değiştirip
+                // sonra WebView'i yok eder — odak yarışı kalmaz.
                 tabs.close(tab)
-                refreshChrome()
+                refreshChromeNow()
             },
             onNew = { incognito ->
                 tabs.newTab(Prefs.HOME_URL, incognito)
@@ -658,12 +735,24 @@ class MainActivity : AppCompatActivity(),
 
     override fun onExternalIntent(uri: Uri): Boolean = openExternally(uri)
 
-    private fun openExternally(uri: Uri): Boolean = try {
-        startActivity(Intent(Intent.ACTION_VIEW, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-        true
-    } catch (_: ActivityNotFoundException) {
-        toast(getString(R.string.no_app_for_link))
-        true
+    private fun openExternally(uri: Uri): Boolean {
+        val scheme = uri.scheme?.lowercase() ?: return true
+        val allowed = setOf(
+            "tel", "mailto", "sms", "mms", "geo", "market",
+            "whatsapp", "tg", "t.me", "viber", "vk", "vksms", "ok",
+            "skype", "zoommtg", "intent", "maps"
+        )
+        if (scheme !in allowed) {
+            toast(getString(R.string.no_app_for_link))
+            return true
+        }
+        return try {
+            startActivity(Intent(Intent.ACTION_VIEW, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            true
+        } catch (_: ActivityNotFoundException) {
+            toast(getString(R.string.no_app_for_link))
+            true
+        }
     }
 
     // ------------------------------------------------- WebChromeClient geri çağrıları
@@ -672,24 +761,37 @@ class MainActivity : AppCompatActivity(),
         if (tab !== tabs.current || tab.isHome) return
         binding.progressBar.progress = progress
         binding.progressBar.visibility = if (progress in 1..99) View.VISIBLE else View.GONE
+        updateReloadIcon()
     }
 
     override fun onTitle(tab: Tab, title: String) {
         if (tab === tabs.current) refreshChrome()
     }
 
-    override fun onIcon(tab: Tab, icon: Bitmap?) = Unit
+    override fun onIcon(tab: Tab, icon: Bitmap?) {
+        if (icon == null) return
+        val host = UrlUtils.host(tab.pageUrl)
+        if (host.isNotEmpty()) FaviconStore.save(this, host, icon)
+    }
 
     override fun onNewWindow(url: String?): Boolean {
         if (url.isNullOrEmpty()) return false
+        val src = tabs.current?.pageUrl.orEmpty()
+        val page = if (UrlUtils.isHttp(src)) src else "https://local.invalid/"
+        if (prefs.adBlockEnabled && adblock.engine.blocks(url, page, "popup")) {
+            Toast.makeText(this, R.string.popup_blocked, Toast.LENGTH_SHORT).show()
+            return true
+        }
         tabs.newTab(url, tabs.current?.incognito == true, select = true)
         refreshChromeNow()
         return true
     }
 
     override fun onCreateNewTab(): Tab? {
-        val newTab = tabs.newTab(null, tabs.current?.incognito == true, select = true)
-        refreshChromeNow()
+        // Сразу с готовым WebView: transport из window.open должен получить
+        // живой view, иначе открывается пустой таб с главной.
+        val newTab = tabs.newWebTab()
+        if (newTab != null) refreshChromeNow()
         return newTab
     }
 
@@ -700,21 +802,40 @@ class MainActivity : AppCompatActivity(),
         }
         customView = view
         customViewCallback = callback
+        // WebView ana düzende bağlı kalır; tam ekran kabı opaktır ve üzerini
+        // örter. Kaydırma konumu, sayfa olası bir yeniden düzenlenmeye karşı
+        // sürekli izlenen lastScrollY'den alınır.
+        fullscreenScrollY = tabs.current?.webView?.lastScrollY
+            ?: tabs.current?.webView?.scrollY ?: 0
         binding.fullscreenContainer.addView(view)
         binding.fullscreenContainer.visibility = View.VISIBLE
-        binding.browserRoot.visibility = View.GONE
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        hideSystemBars()
     }
 
     override fun onHideCustomView() {
         val view = customView ?: return
         binding.fullscreenContainer.removeView(view)
         binding.fullscreenContainer.visibility = View.GONE
-        binding.browserRoot.visibility = View.VISIBLE
         window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        showSystemBars()
         customView = null
         customViewCallback?.onCustomViewHidden()
         customViewCallback = null
+        // Sayfa olası geç yeniden düzenlenmelere karşı konumu birkaç kez geri
+        // koyar; araya kullanıcı kaydırması girmesin diye yalnızca konum
+        // hâlâ beklenenden farklıysa uygulanır.
+        val savedY = fullscreenScrollY
+        val web = tabs.current?.webView
+        if (savedY > 0 && web != null) {
+            for (delay in longArrayOf(60, 250, 500)) {
+                binding.webContainer.postDelayed({
+                    if (web.scrollY != savedY && fullscreenScrollY == savedY) {
+                        web.scrollTo(0, savedY)
+                    }
+                }, delay)
+            }
+        }
     }
 
     override fun onFileChooser(
@@ -742,23 +863,23 @@ class MainActivity : AppCompatActivity(),
         size: Long
     ) {
         try {
-            val request = android.app.DownloadManager.Request(Uri.parse(url)).apply {
-                setMimeType(mimeType)
-                userAgent?.let { addRequestHeader("User-Agent", it) }
-                setNotificationVisibility(
-                    android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED
-                )
-                setDestinationInExternalPublicDir(
-                    android.os.Environment.DIRECTORY_DOWNLOADS,
-                    URLUtil.guessFileName(url, contentDisposition, mimeType)
-                )
-            }
-            val dm = getSystemService(DOWNLOAD_SERVICE) as android.app.DownloadManager
-            dm.enqueue(request)
+            DownloadHelper.enqueue(this, url, userAgent, contentDisposition, mimeType, size)
             toast(getString(R.string.download_started))
         } catch (t: Throwable) {
             toast(t.message ?: "İndirme başarısız")
         }
+    }
+
+    private fun hideSystemBars() {
+        val controller = WindowCompat.getInsetsController(window, window.decorView)
+        controller.systemBarsBehavior =
+            WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        controller.hide(WindowInsetsCompat.Type.systemBars())
+    }
+
+    private fun showSystemBars() {
+        WindowCompat.getInsetsController(window, window.decorView)
+            .show(WindowInsetsCompat.Type.systemBars())
     }
 
     private fun toast(text: String) {
@@ -780,5 +901,7 @@ class MainActivity : AppCompatActivity(),
         const val ID_SETTINGS = 9
         const val ID_EXIT = 10
         const val ID_TRANSLATE = 11
+        const val ID_SHIELD = 12
+        const val ID_ADD_HOME = 13
     }
 }

@@ -17,6 +17,10 @@ class OrbitWebView @JvmOverloads constructor(
 
     var onScrollListener: ((dy: Int, scrollY: Int) -> Unit)? = null
 
+    /** Tam ekran videoya girilmeden önceki gerçek kaydırma konumu. */
+    var lastScrollY = 0
+        private set
+
     init {
         isFocusable = true
         isFocusableInTouchMode = true
@@ -24,6 +28,7 @@ class OrbitWebView @JvmOverloads constructor(
 
     override fun onScrollChanged(l: Int, t: Int, oldl: Int, oldt: Int) {
         super.onScrollChanged(l, t, oldl, oldt)
+        lastScrollY = t
         onScrollListener?.invoke(t - oldt, t)
     }
 

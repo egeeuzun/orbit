@@ -81,6 +81,13 @@
             android:parentActivityName=".ui.MainActivity" />
 
         <activity
+            android:name=".ui.WebappActivity"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|smallestScreenSize|density|uiMode"
+            android:launchMode="singleTop"
+            android:documentLaunchMode="intoExisting"
+            android:taskAffinity="com.orbit.browser.webapp" />
+
+        <activity
             android:name=".ui.AboutActivity"
             android:configChanges="orientation|screenSize|keyboardHidden|uiMode"
             android:label="@string/settings_about"

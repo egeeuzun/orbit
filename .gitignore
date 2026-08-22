@@ -8,3 +8,10 @@ captures/
 .cxx/
 rust/adblock-jni/target/
 arastirma/
+
+# секреты/подписи — вне репозитория
+keystore.properties
+*.jks
+*.keystore
+orbit-keystore-pass.txt
+.env

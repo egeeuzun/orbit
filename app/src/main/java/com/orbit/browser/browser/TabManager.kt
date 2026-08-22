@@ -48,6 +48,20 @@ class TabManager(
         return tab
     }
 
+    /** Закрытая вкладка с готовым WebView — для WebChromeClient transport
+     *  (window.open): без WebView transport вернул бы false, и WebView ушёл бы
+     *  в пустой таб. WebView создаётся сразу, чтобы перехваты сработали. */
+    fun newWebTab(): Tab? {
+        val tab = Tab(nextId++, current?.incognito == true)
+        _tabs.add(tab)
+        try {
+            wake(tab)
+        } catch (_: Throwable) {
+            return null
+        }
+        return tab
+    }
+
     fun select(tab: Tab) {
         if (current === tab && (tab.isLive || idleHome(tab))) return
         current?.let { detachView(it) }
@@ -79,18 +93,22 @@ class TabManager(
         if (index < 0) return
         _tabs.remove(tab)
         liveOrder.remove(tab)
+
+        // Önce geçerli sekmeyi değiştir, sonra WebView'i yok et: WebView
+        // yok edildiğinde odak başka bir görünüme taşınır ve odak
+        // dinleyicileri (adres çubuğu dahil) o anda eski sekmeyi okumasın.
+        if (current === tab) {
+            current = null
+            val next = _tabs.getOrNull(index) ?: _tabs.lastOrNull()
+            if (next != null) select(next) else newTab(prefs.homePage, false)
+        }
+
         tab.webView?.let {
             (it.parent as? ViewGroup)?.removeView(it)
             WebViewFactory.destroy(it)
         }
         release(tab)
         tab.savedState = null
-
-        if (current === tab) {
-            current = null
-            val next = _tabs.getOrNull(index) ?: _tabs.lastOrNull()
-            if (next != null) select(next) else newTab(prefs.homePage, false)
-        }
     }
 
     fun closeAll() {
@@ -121,7 +139,7 @@ class TabManager(
         val web = WebViewFactory.create(context, prefs, bridge, tab.incognito)
         bridge.attach(web)
         tab.bridge = bridge
-        web.webViewClient = OrbitWebViewClient(tab, adblock, prefs, clientCallbacks)
+        web.webViewClient = OrbitWebViewClient(context, tab, adblock, prefs, clientCallbacks)
         web.webChromeClient = OrbitChromeClient(tab, chromeHost)
         web.setDownloadListener { url, ua, disposition, mime, size ->
             onDownload(url, ua, disposition, mime, size)

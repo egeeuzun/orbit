@@ -51,6 +51,14 @@ object FilterLists {
             "https://filters.adtidy.org/extension/ublock/filters/13.txt", true
         ),
         FilterList(
+            "adguard-russian", "AdGuard — Rusça filtreler",
+            "https://filters.adtidy.org/extension/ublock/filters/1.txt", true
+        ),
+        FilterList(
+            "ruadlist", "RU AdList (EasyList Rusya)",
+            "https://easylist-downloads.adblockplus.org/advblock.txt", true
+        ),
+        FilterList(
             "easylist-cookie", "EasyList Cookie (çerez uyarıları)",
             "https://secure.fanboy.co.nz/fanboy-cookiemonster.txt", false
         ),
