@@ -54,7 +54,7 @@
     <string name="settings_about">Hakkında</string>
 
     <string name="pref_about_orbit">Orbit Hakkında</string>
-    <string name="pref_about_orbit_sum">Sürüm 1.228 · Özellikler ve detaylar</string>
+    <string name="pref_about_orbit_sum">Sürüm %1$s · Özellikler ve detaylar</string>
 
     <string name="search_engine">Arama motoru</string>
     <string name="pref_search_suggestions">Arama önerileri</string>

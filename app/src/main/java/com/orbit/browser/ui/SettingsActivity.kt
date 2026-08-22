@@ -161,7 +161,7 @@ class SettingsActivity : AppCompatActivity() {
         }
 
         header(R.string.settings_about)
-        action(getString(R.string.pref_about_orbit), getString(R.string.pref_about_orbit_sum)) {
+        action(getString(R.string.pref_about_orbit), getString(R.string.pref_about_orbit_sum, com.orbit.browser.BuildConfig.VERSION_NAME)) {
             startActivity(android.content.Intent(this, AboutActivity::class.java))
         }
 

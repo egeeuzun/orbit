@@ -5,9 +5,13 @@
   облачный бэкап Google и не переносятся на новое устройство (сохраняется
   только файл настроек); вкладка «Приватная» честно сообщает, что куки и
   логины остаются общими с обычными вкладками.
-- **Безопасность**: release подписывается реальным ключом из
-  `keystore.properties` (вне репозитория), ключ подписи ротирован; внешние
-  ссылки (`tel:/mailto:/…`) открываются только для известных схем.
+- **Безопасность**: ключ подписи ротирован по-настоящему — выпущен новый
+  ключ RSA-4096 (`CN=Ege Uzun, O=Orbit`), а переход оформлен через
+  SigningCertificateLineage (APK Signature Scheme v3.1). Благодаря этому
+  обновление ставится поверх 1.228 без переустановки: на Android 13+ APK
+  проверяется новым ключом, на более старых версиях — прежним сертификатом.
+  Ключ и lineage хранятся вне репозитория. Внешние ссылки
+  (`tel:/mailto:/…`) открываются только для известных схем.
 - **Русские фильтры по умолчанию**: добавлены AdGuard Russian
   (https://filters.adtidy.org/extension/ublock/filters/1.txt) и RU AdList
   (https://easylist-downloads.adblockplus.org/advblock.txt); оба включены по
@@ -51,8 +55,12 @@
   to Google cloud backup or device transfer (only the settings file is backed
   up); the "Private" tab honestly notes that cookies and logins are shared with
   regular tabs.
-- **Security**: release is signed with a real key from `keystore.properties`
-  (outside the repo), the signing key was rotated; external links
+- **Security**: the signing key has actually been rotated — a new RSA-4096 key
+  (`CN=Ege Uzun, O=Orbit`) was issued and the transition is carried by a
+  SigningCertificateLineage (APK Signature Scheme v3.1). As a result the build
+  installs over 1.228 as a normal update with no reinstall: on Android 13+ the
+  APK verifies against the new key, on older releases against the previous
+  certificate. Key and lineage live outside the repo. External links
   (`tel:/mailto:/...`) only open for known schemes.
 - **Russian filters on by default**: two filter lists added — AdGuard Russian
   (https://filters.adtidy.org/extension/ublock/filters/1.txt) and RU AdList
