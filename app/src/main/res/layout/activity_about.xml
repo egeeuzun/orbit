@@ -33,13 +33,16 @@
             android:paddingEnd="24dp"
             android:paddingBottom="36dp">
 
-            <!-- App's Own Logo -->
+            <!-- App's Own Logo — @mipmap/ic_launcher API<26'da adaptive-icon
+                 XML olarak çözülemiyor ve InflateException veriyor. Bu drawable
+                 klasik layer-list olduğu için Samsung TouchWiz (Android 6) ve
+                 diğer eski üreticilerde de sorunsuz açılır. -->
             <ImageView
                 android:layout_width="84dp"
                 android:layout_height="84dp"
                 android:contentDescription="@string/app_name"
                 android:elevation="4dp"
-                android:src="@mipmap/ic_launcher" />
+                android:src="@drawable/ic_orbit_logo" />
 
             <!-- Stylish Orbit Title -->
             <TextView

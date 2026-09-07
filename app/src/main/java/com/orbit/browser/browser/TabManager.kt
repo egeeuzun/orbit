@@ -155,7 +155,13 @@ class TabManager(
             // Başlangıç ekranı yerel bir görünüm; WebView boş belge tutar.
             web.loadUrl(if (url == Prefs.HOME_URL) BLANK else url, extraHeaders())
         }
-        tab.pendingUrl = null
+        // Bekleyen adres burada temizlenmez: `loadUrl` eşzamansız çalışır,
+        // `onPageStarted` yolda ve `pageUrl` hâlâ boş. Adres çubuğunu
+        // ("yeni sekme açıldı ama üstte hâlâ eski URL görünüyor" hatası)
+        // yönlendirme anında güncel tutmak için bekleyen URL, gerçek gezinme
+        // başlayınca `OrbitWebViewClient.onPageStarted` içinde sıfırlanır;
+        // durum geri yüklendiyse zaten anlamsız olduğu için hemen düşer.
+        if (restored) tab.pendingUrl = null
         return web
     }
 
@@ -218,23 +224,32 @@ class TabManager(
         const val BLANK = "about:blank"
     }
 
+    /**
+     * Uygulama arka plana geçerken WebView bilerek duraklatılmıyor:
+     * `WebView.onPause` + `pauseTimers` çağrıları Chromium'un ses hattını
+     * susturuyordu. Ses (radyo, video sesi) arka planda çalışabilsin diye
+     * yalnızca gerçek hibernate sırasında (bellek baskısı, sekme kapatma)
+     * WebView durdurulur; sıradan arka plana geçişte Chromium kendi başına
+     * yükü azaltır. Süreç foreground kalabilsin diye MainActivity ayrıca
+     * `MediaKeepAliveService` başlatır — kullanıcı bildirimdeki "Durdur"
+     * düğmesiyle her an durdurabilir.
+     */
     fun onPause() {
-        current?.webView?.let {
-            it.onPause()
-            it.pauseTimers()
-        }
+        // Bilerek boş: sekme arka plana geçse bile WebView'ı susturmuyoruz.
     }
 
     fun onResume() {
-        current?.webView?.let {
-            it.onResume()
-            it.resumeTimers()
-        }
+        // WebView.onResume çağırmaya gerek yok — onPause hiç çağrılmadı.
     }
 
     fun updateTheme() {
         for (tab in _tabs) {
-            tab.webView?.let { WebViewFactory.applyTheme(it, prefs) }
+            tab.webView?.let {
+                WebViewFactory.applyTheme(it, prefs)
+                // Karartma ayarı ya da tema değişmiş olabilir; taban rengi de
+                // yeniden hesaplanır (aksi hâlde eski renk sayfanın altında kalır).
+                WebViewFactory.applyBaseBackground(it, prefs, blank = tab.isHome)
+            }
         }
     }
 

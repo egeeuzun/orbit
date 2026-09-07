@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Durum çubuğu simgeleri koyu çizilsin mi (açık zemin). Gece sürümü
+         `values-night/bools.xml` içinde false. -->
+    <bool name="light_status_bar">true</bool>
+</resources>

@@ -8,15 +8,32 @@
     android:paddingTop="8dp"
     android:paddingBottom="8dp">
 
-    <TextView
-        android:id="@+id/shortcutInitial"
+    <!-- Harf kutucuğu ile favicon aynı yuvarlak zemini paylaşır: ikon
+         diskte varsa üstteki ImageView görünür, yoksa harf kalır. -->
+    <FrameLayout
         android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:background="@drawable/bg_shortcut"
-        android:gravity="center"
-        android:textColor="?attr/colorOnPrimaryContainer"
-        android:textSize="18sp"
-        android:textStyle="bold" />
+        android:layout_height="48dp">
+
+        <TextView
+            android:id="@+id/shortcutInitial"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/bg_shortcut"
+            android:gravity="center"
+            android:textColor="?attr/colorOnPrimaryContainer"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <ImageView
+            android:id="@+id/shortcutIcon"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/bg_shortcut"
+            android:contentDescription="@null"
+            android:padding="11dp"
+            android:scaleType="fitCenter"
+            android:visibility="gone" />
+    </FrameLayout>
 
     <TextView
         android:id="@+id/shortcutLabel"

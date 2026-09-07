@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Genişliği >= 600dp olan yapılandırmalar için (tablet dikey/yatay,
+     katlanabilir açık, yatay telefon).
+
+     Alt çubuk artık ortalanmıyor (kullanıcı isterse ayarlardan alta
+     alabilir; öntanım tablette üstte). Sadece dokunma hedefleri büyür. -->
+<resources>
+    <dimen name="bottom_bar_side_padding">0dp</dimen>
+    <dimen name="bottom_bar_height">56dp</dimen>
+    <dimen name="omnibox_height">44dp</dimen>
+    <dimen name="omnibox_text_size">15sp</dimen>
+    <dimen name="nav_button_size">44dp</dimen>
+    <dimen name="nav_button_padding">10dp</dimen>
+</resources>

@@ -98,6 +98,11 @@ class TabsSheet(
         root.addView(actionsLayout)
 
         dialog.setContentView(root)
+        // Yatay ve tablet yerleşiminde sekme listesi peek yüksekliğine
+        // sıkışıp yalnızca birkaç satır gösteriyor; genişletilmiş açılış
+        // sürüklemeye gerek bırakmıyor.
+        dialog.behavior.skipCollapsed = true
+        dialog.behavior.state = com.google.android.material.bottomsheet.BottomSheetBehavior.STATE_EXPANDED
         dialog.show()
     }
 

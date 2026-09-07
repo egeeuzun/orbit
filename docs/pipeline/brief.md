@@ -30,9 +30,10 @@ Held by the maintainer only, outside the repository (`.gitignore` covers
 | `orbit-release.jks` | the signing key (alias `orbit`) |
 | `orbit-lineage.bin` | proof-of-rotation, **required for every future release** |
 | `orbit-keystore-pass.txt` | keystore password |
+| `~/.android/debug.keystore` | the key that signed releases up to 1.228, still the first signer in the lineage |
 
-Losing `orbit-release.jks` or `orbit-lineage.bin` means no user can ever
-update in place again. Back both up.
+Losing `orbit-release.jks`, `orbit-lineage.bin` or the debug keystore means no
+user can ever update in place again. Back all three up.
 
 If `keystore.properties` exists at the repo root, Gradle will sign the release
 with that single key and **no** lineage — that is the wrong output for a
@@ -66,6 +67,39 @@ done
 
 The oldest signer in the lineage (the debug key) must be passed first: v1/v2
 signing requires it, and old devices validate against it.
+
+## Automated releases (GitHub Actions)
+
+`.github/workflows/release.yml` runs the same steps on a tag push (`v*`) or a
+manual dispatch: it builds the four unsigned APKs, aligns and signs each one
+with the lineage, verifies both SDK ranges, and attaches them to a **draft**
+GitHub Release together with `SHA256SUMS.txt`.
+
+The job runs in the `release` environment, which requires a reviewer: every run
+pauses for approval before the signing step, and the four secrets below live on
+that environment rather than on the repository, so no other workflow can read
+the key.
+
+Secrets (set on the `release` environment):
+
+| Secret | Contents |
+|---|---|
+| `RELEASE_KEYSTORE_B64` | `base64 -w0 orbit-release.jks` |
+| `RELEASE_KEYSTORE_PASSWORD` | the keystore password |
+| `RELEASE_LINEAGE_B64` | `base64 -w0 orbit-lineage.bin` |
+| `DEBUG_KEYSTORE_B64` | `base64 -w0 ~/.android/debug.keystore` |
+
+The debug keystore is required, not optional: the lineage carries the old
+certificate, but signing v1/v2 blocks for pre-Android-13 devices needs its
+private key. Keep the same backups for it as for the other two files.
+
+The workflow refuses to run if `keystore.properties` is present, since Gradle
+would then sign with a single key and no lineage.
+
+The Rust toolchain is not installed on the runner: the prebuilt
+`libadblock_jni.so` files are committed and `buildNativeAdblock` disables
+itself when `cargo` is missing. Rebuild them locally when the JNI sources
+change.
 
 ## Verifying before publishing
 

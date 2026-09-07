@@ -1,30 +1,86 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    Tek tema dosyası: gündüz/gece farkı `values-night` altındaki renk ve bool
+    kaynaklarından gelir (`@color/orbit_*`, `@bool/light_status_bar`). Eskiden
+    `values-night/themes.xml` paleti ikinci kez tanımlıyordu ve iki kopya
+    ayrışabiliyordu.
+-->
 <resources xmlns:tools="http://schemas.android.com/tools">
     <style name="Theme.Orbit" parent="Theme.Material3.DayNight.NoActionBar">
-        <item name="colorPrimary">@color/m3_primary_light</item>
-        <item name="colorOnPrimary">@color/m3_on_primary_light</item>
-        <item name="colorPrimaryContainer">@color/m3_primary_container_light</item>
-        <item name="colorOnPrimaryContainer">@color/m3_on_primary_container_light</item>
-        <item name="colorSurface">@color/m3_surface_light</item>
-        <item name="colorSurfaceContainer">@color/m3_surface_container_light</item>
-        <item name="colorSurfaceContainerHigh">@color/m3_surface_container_high_light</item>
-        <item name="colorOnSurface">@color/m3_on_surface_light</item>
-        <item name="colorOnSurfaceVariant">@color/m3_on_surface_variant_light</item>
+        <item name="colorPrimary">@color/orbit_primary</item>
+        <item name="colorOnPrimary">@color/orbit_on_primary</item>
+        <item name="colorPrimaryContainer">@color/orbit_primary_container</item>
+        <item name="colorOnPrimaryContainer">@color/orbit_on_primary_container</item>
+        <item name="colorSurface">@color/orbit_surface</item>
+        <item name="colorSurfaceContainer">@color/orbit_surface_container</item>
+        <item name="colorSurfaceContainerHigh">@color/orbit_surface_container_high</item>
+        <item name="colorSurfaceContainerLowest">@color/orbit_surface_container_lowest</item>
+        <item name="colorSurfaceContainerLow">@color/orbit_surface_container_low</item>
+        <item name="colorSurfaceContainerHighest">@color/orbit_surface_container_highest</item>
+        <item name="colorSurfaceVariant">@color/orbit_surface_variant</item>
+        <item name="colorSurfaceDim">@color/orbit_surface_dim</item>
+        <item name="colorSurfaceBright">@color/orbit_surface_bright</item>
+        <item name="colorOnSurface">@color/orbit_on_surface</item>
+        <item name="colorOnSurfaceVariant">@color/orbit_on_surface_variant</item>
+        <!-- Theme.Material3 pencere zeminini stok `m3_sys_color_*_background`
+             sabitine bağlar; palet ezildiğinde bu geride kalıyor ve kendi
+             arka planı olmayan ekranlar (Hakkında) koyu temada siyah
+             (#141218) çıkıyordu. -->
+        <item name="android:windowBackground">@color/orbit_surface</item>
         <item name="android:statusBarColor">?attr/colorSurface</item>
         <item name="android:navigationBarColor">?attr/colorSurfaceContainer</item>
-        <item name="android:windowLightStatusBar" tools:targetApi="m">true</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">@bool/light_status_bar</item>
         <item name="bottomSheetDialogTheme">@style/BottomSheetDialogTheme</item>
+        <!-- Theme.Material3 `alertDialogTheme`'i kendi haline bırakır: sade
+             `AlertDialog.Builder` ile açılan pencereler AppCompat'in stok koyu
+             gri (#424242) zeminiyle çiziliyordu. Kaplama düğmeleri Material3
+             yapar; pencere zemini ise `colorBackgroundFloating`den geldiği
+             için palete o da ayrıca bağlanır. -->
+        <item name="alertDialogTheme">@style/ThemeOverlay.Material3.Dialog.Alert</item>
+        <item name="colorBackgroundFloating">@color/orbit_surface_container_low</item>
+        <item name="android:colorBackgroundFloating">@color/orbit_surface_container_low</item>
     </style>
 
     <style name="Theme.Orbit.Fullscreen" parent="Theme.Orbit">
         <item name="android:windowFullscreen">true</item>
     </style>
 
+    <!--
+        BottomSheetDialog ayrı bir tema ile açılır ve `ContextThemeWrapper` onu
+        activity temasının üzerine `force=true` ile uygular: bu temada
+        tanımlanmayan her renk stok Material3 değerine düşer. Palet burada
+        yinelenmezse koyu temada menü/sekme/kalkan sayfaları Orbit lacivertine
+        (#0F172A) değil stok M3 siyahına (#1D1B20) boyanıyordu.
+    -->
     <style name="BottomSheetDialogTheme" parent="Theme.Material3.DayNight.BottomSheetDialog">
+        <item name="colorPrimary">@color/orbit_primary</item>
+        <item name="colorOnPrimary">@color/orbit_on_primary</item>
+        <item name="colorPrimaryContainer">@color/orbit_primary_container</item>
+        <item name="colorOnPrimaryContainer">@color/orbit_on_primary_container</item>
+        <item name="colorSurface">@color/orbit_surface</item>
+        <item name="colorSurfaceContainer">@color/orbit_surface_container</item>
+        <item name="colorSurfaceContainerHigh">@color/orbit_surface_container_high</item>
+        <item name="colorSurfaceContainerLowest">@color/orbit_surface_container_lowest</item>
+        <item name="colorSurfaceContainerLow">@color/orbit_surface_container_low</item>
+        <item name="colorSurfaceContainerHighest">@color/orbit_surface_container_highest</item>
+        <item name="colorSurfaceVariant">@color/orbit_surface_variant</item>
+        <item name="colorSurfaceDim">@color/orbit_surface_dim</item>
+        <item name="colorSurfaceBright">@color/orbit_surface_bright</item>
+        <item name="colorOnSurface">@color/orbit_on_surface</item>
+        <item name="colorOnSurfaceVariant">@color/orbit_on_surface_variant</item>
+        <item name="android:navigationBarColor">@color/orbit_surface_container_low</item>
         <item name="bottomSheetStyle">@style/BottomSheetStyle</item>
     </style>
 
+    <!--
+        `BottomSheetBehavior` şekil temalandırması açıkken `android:background`
+        değerini kendi ürettiği `MaterialShapeDrawable` ile değiştirir; sayfanın
+        gerçek rengi `backgroundTint` üzerinden gelir (stok değeri
+        `?attr/colorSurfaceContainerLow`). Renk burada da açıkça verilir ki
+        şekil temalandırmasının açık/kapalı olması sonucu değiştirmesin.
+    -->
     <style name="BottomSheetStyle" parent="Widget.Material3.BottomSheet.Modal">
         <item name="android:background">@drawable/bg_bottom_sheet</item>
+        <item name="backgroundTint">@color/orbit_surface_container_low</item>
     </style>
 </resources>

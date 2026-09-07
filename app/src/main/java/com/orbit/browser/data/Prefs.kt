@@ -173,6 +173,28 @@ class Prefs(context: Context) {
         get() = sp.getBoolean(KEY_FORCE_DARK, false)
         set(v) = sp.edit { putBoolean(KEY_FORCE_DARK, v) }
 
+    /**
+     * Adres çubuğu konumu.
+     *
+     * - `URL_BAR_AUTO` (öntanım): sw >= 600dp cihazlarda üstte, telefonda altta.
+     * - `URL_BAR_TOP`: her yerde üstte (klasik masaüstü tarzı).
+     * - `URL_BAR_BOTTOM`: her yerde altta (parmak menzili).
+     *
+     * MainActivity `onCreate`'te okur ve buna göre farklı layout inflate eder;
+     * değişince `recreate()` gerekir.
+     */
+    var urlBarPosition: String
+        get() = sp.getString(KEY_URL_BAR_POSITION, URL_BAR_AUTO)!!
+        set(v) = sp.edit { putString(KEY_URL_BAR_POSITION, v) }
+
+    /** Bu yapılandırma için gerçekten kullanılacak konum ("top" ya da "bottom"). */
+    fun effectiveUrlBarPosition(smallestScreenWidthDp: Int): String =
+        when (urlBarPosition) {
+            URL_BAR_TOP -> URL_BAR_TOP
+            URL_BAR_BOTTOM -> URL_BAR_BOTTOM
+            else -> if (smallestScreenWidthDp >= TABLET_SW_THRESHOLD_DP) URL_BAR_TOP else URL_BAR_BOTTOM
+        }
+
     /** 1 GB RAM'de aynı anda canlı tutulacak WebView sayısı. */
     var liveTabLimit: Int
         get() = sp.getInt(KEY_LIVE_TABS, 1)
@@ -217,23 +239,10 @@ class Prefs(context: Context) {
      * глобальных). Опции: base, cv, anim, gpu, lib.
      */
     var siteOverrides: Map<String, Map<String, Boolean>>
-        get() {
-            val raw = sp.getStringSet(KEY_SITE_OVERRIDES, emptySet())!!
-            val out = mutableMapOf<String, Map<String, Boolean>>()
-            for (line in raw) {
-                val eq = line.indexOf('=')
-                if (eq <= 0) continue
-                val host = line.substring(0, eq)
-                val flags = line.substring(eq + 1).split(',')
-                    .mapNotNull { p ->
-                        val c = p.indexOf(':')
-                        if (c <= 0) null else p.substring(0, c) to (p.substring(c + 1) == "1")
-                    }
-                    .toMap()
-                if (host.isNotEmpty()) out[host] = flags
-            }
-            return out
-        }
+        // Ayrıştırılmış harita [Hot] içinde tutulur: eskiden her okumada
+        // StringSet çözülüp yeni harita kuruluyordu ve bu, `LibCache`
+        // üzerinden **her ağ isteğinde** tekrarlanıyordu.
+        get() = Hot.siteOverrides
         set(v) = sp.edit {
             putStringSet(
                 KEY_SITE_OVERRIDES,
@@ -247,6 +256,57 @@ class Prefs(context: Context) {
     fun effectiveFeature(host: String, feature: String, global: Boolean): Boolean {
         return siteOverrides[host]?.get(feature) ?: global
     }
+
+    /**
+     * Yerel kütüphane önbelleği herhangi bir yerde (küresel ya da bir site
+     * profilinde) açık mı? İstek yolunda önce buna bakılır; kapalıysa
+     * adres hiç incelenmez. Değer [Hot] içinde hazır tutulur.
+     */
+    val libCacheAnywhere: Boolean get() = Hot.libCacheAnywhere
+
+    /**
+     * Kullanıcının başlangıç ekranına elle eklediği kısayollar. Izgarada
+     * geçmişten türeyenlerden **önce** ve buradaki sırayla görünürler.
+     *
+     * Sıra korunmalı olduğu için `StringSet` (sırasız) değil, satır başına
+     * bir kayıt tutan tek metin kullanılır: `adres \t başlık`. Başlıktaki
+     * ayraç karakterleri yazarken boşluğa çevrilir.
+     */
+    var pinnedShortcuts: List<BrowserDb.Entry>
+        get() {
+            val raw = sp.getString(KEY_PINNED_SHORTCUTS, "").orEmpty()
+            if (raw.isEmpty()) return emptyList()
+            val out = ArrayList<BrowserDb.Entry>()
+            for (line in raw.split('\n')) {
+                val tab = line.indexOf('\t')
+                if (tab <= 0) continue
+                out.add(BrowserDb.Entry(line.substring(0, tab), line.substring(tab + 1)))
+            }
+            return out
+        }
+        set(v) = sp.edit {
+            putString(
+                KEY_PINNED_SHORTCUTS,
+                v.joinToString("\n") { "${it.url.clean()}\t${it.title.clean()}" }
+            )
+        }
+
+    /**
+     * Başlangıç ekranından kaldırılan siteler (ana bilgisayar adıyla).
+     * Geçmiş silinmez; site yalnızca ızgarada görünmez — aksi hâlde
+     * kaldırılan site bir sonraki ziyarette geri gelirdi.
+     */
+    var hiddenShortcutHosts: Set<String>
+        get() = sp.getStringSet(KEY_HIDDEN_SHORTCUTS, null) ?: emptySet()
+        set(v) = sp.edit { putStringSet(KEY_HIDDEN_SHORTCUTS, HashSet(v)) }
+
+    /** Izgarayı fabrika hâline döndürür: elle eklenenler ve gizlenenler silinir. */
+    fun resetHomeShortcuts() = sp.edit {
+        remove(KEY_PINNED_SHORTCUTS)
+        remove(KEY_HIDDEN_SHORTCUTS)
+    }
+
+    private fun String.clean() = replace('\n', ' ').replace('\t', ' ').trim()
 
     var restoreTabs: Boolean
         get() = sp.getBoolean(KEY_RESTORE_TABS, false)
@@ -272,6 +332,8 @@ class Prefs(context: Context) {
         @Volatile var cosmetic: Boolean = true
         @Volatile var generic: Boolean = true
         @Volatile var allowlist: Set<String> = emptySet()
+        @Volatile var siteOverrides: Map<String, Map<String, Boolean>> = emptyMap()
+        @Volatile var libCacheAnywhere: Boolean = false
 
         // Dinleyici güçlü referansla tutulmalı; SharedPreferences zayıf tutar.
         private val listener =
@@ -294,6 +356,28 @@ class Prefs(context: Context) {
             // Kopyalanır: SharedPreferences kendi kümesini geri verir ve o küme
             // sonraki yazımlarda değişebilir.
             allowlist = sp.getStringSet(KEY_ALLOWLIST, null)?.let { HashSet(it) } ?: emptySet()
+            val overrides = parseOverrides(sp.getStringSet(KEY_SITE_OVERRIDES, null))
+            siteOverrides = overrides
+            libCacheAnywhere =
+                (sp.getBoolean(KEY_TURBO_PACK, false) && sp.getBoolean(KEY_TURBO_LIB_CACHE, false)) ||
+                    overrides.values.any { it[FEATURE_LIB] == true }
+        }
+
+        private fun parseOverrides(raw: Set<String>?): Map<String, Map<String, Boolean>> {
+            if (raw.isNullOrEmpty()) return emptyMap()
+            val out = HashMap<String, Map<String, Boolean>>(raw.size * 2)
+            for (line in raw) {
+                val eq = line.indexOf('=')
+                if (eq <= 0) continue
+                val host = line.substring(0, eq)
+                val flags = HashMap<String, Boolean>(8)
+                for (p in line.substring(eq + 1).split(',')) {
+                    val c = p.indexOf(':')
+                    if (c > 0) flags[p.substring(0, c)] = p.substring(c + 1) == "1"
+                }
+                out[host] = flags
+            }
+            return out
         }
     }
 
@@ -356,5 +440,15 @@ class Prefs(context: Context) {
         const val FEATURE_LIB = "lib"
         private const val KEY_RESTORE_TABS = "restore_tabs"
         private const val KEY_SAVED_SESSION = "saved_session"
+        private const val KEY_PINNED_SHORTCUTS = "pinned_shortcuts"
+        private const val KEY_HIDDEN_SHORTCUTS = "hidden_shortcuts"
+
+        private const val KEY_URL_BAR_POSITION = "url_bar_position"
+        const val URL_BAR_AUTO = "auto"
+        const val URL_BAR_TOP = "top"
+        const val URL_BAR_BOTTOM = "bottom"
+
+        /** Otomatik konum için "tablet" eşiği: kısa kenar dp cinsinden. */
+        const val TABLET_SW_THRESHOLD_DP = 600
     }
 }

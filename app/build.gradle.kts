@@ -13,8 +13,8 @@ android {
         applicationId = "com.orbit.browser"
         minSdk = 21
         targetSdk = 36
-        versionCode = 2000
-        versionName = "2.0.0"
+        versionCode = 2500
+        versionName = "2.5"
         vectorDrawables.useSupportLibrary = true
     }
 
@@ -74,6 +74,14 @@ android {
     kotlin {
         compilerOptions {
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+            // Kotlin'in her genel metoda eklediği null denetimi çağrıları
+            // (Intrinsics.checkNotNullParameter vb.) kaldırılır: daha küçük
+            // dex, daha az çağrı. Çağıran taraf zaten Kotlin'dir.
+            freeCompilerArgs.addAll(
+                "-Xno-param-assertions",
+                "-Xno-call-assertions",
+                "-Xno-receiver-assertions"
+            )
         }
     }
 

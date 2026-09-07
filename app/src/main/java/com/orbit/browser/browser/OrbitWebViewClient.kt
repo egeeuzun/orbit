@@ -12,6 +12,7 @@ import com.orbit.browser.BuildConfig
 import com.orbit.browser.adblock.AdblockService
 import com.orbit.browser.adblock.RequestTypes
 import com.orbit.browser.data.Prefs
+import com.orbit.browser.media.MediaPlaybackTracker
 import com.orbit.browser.util.UrlUtils
 import org.json.JSONObject
 
@@ -54,11 +55,11 @@ class OrbitWebViewClient(
     }
 
     private fun isImageRequest(request: WebResourceRequest, url: String): Boolean {
-        val path = request.url.path?.lowercase(java.util.Locale.ROOT).orEmpty()
-        if (path.endsWith(".png") || path.endsWith(".jpg") || path.endsWith(".jpeg") ||
-            path.endsWith(".gif") || path.endsWith(".webp") || path.endsWith(".svg") ||
-            path.endsWith(".ico")
-        ) return true
+        // Küçük harfe çevrilmiş kopya çıkarılmaz; uzantı yerinde karşılaştırılır.
+        val path = request.url.path.orEmpty()
+        for (ext in IMAGE_EXTENSIONS) {
+            if (path.endsWith(ext, ignoreCase = true)) return true
+        }
         return request.requestHeaders["Accept"]?.contains("image/") == true
     }
 
@@ -91,27 +92,30 @@ class OrbitWebViewClient(
                 java.io.ByteArrayInputStream(ByteArray(0))
             )
         }
+        // `request.url` zaten çözümlenmiş bir `Uri`: metin ve ana bilgisayar
+        // buradan bir kez okunur, aşağıdaki hiçbir adım adresi yeniden
+        // ayrıştırmaz.
+        val url = request.url.toString()
+        val host = request.url.host
         // Турбо: популярные CDN-библиотеки отдаются из локального кэша
-        // (эффективное значение с учётом пер-сайт профиля).
-        LibCache.match(context, prefs, request.url.toString())?.let { return it }
+        // (эффективное значение с учётом пер-сайт профиля). Özellik
+        // kapalıyken tek bir `volatile` okumayla geçilir.
+        if (prefs.libCacheAnywhere) {
+            LibCache.match(context, prefs, url, host)?.let { return it }
+        }
         // Kozmetik CSS isteğini yakala: Via'daki gibi <link> üzerinden
         // gelen CSS isteğine doğrudan stil yanıtı dönülür.
-        val path = request.url.path
-        if (path == "/orbit_inject_blocker.css") {
+        if (url.endsWith(COSMETIC_CSS_PATH) && request.url.path == COSMETIC_CSS_PATH) {
             val pageUrl = tab.pageUrl
             val css = if (prefs.adBlockEnabled && prefs.cosmeticFiltering && pageUrl.isNotEmpty()) {
                 adblock.engine.cosmetic(pageUrl)?.css.orEmpty()
             } else ""
-            val headers = mapOf(
-                "Access-Control-Allow-Origin" to "*",
-                "Cache-Control" to "no-store, no-cache"
-            )
             return WebResourceResponse(
                 "text/css",
                 "utf-8",
                 200,
                 "OK",
-                headers,
+                CSS_HEADERS,
                 css.toByteArray().inputStream()
             )
         }
@@ -126,7 +130,6 @@ class OrbitWebViewClient(
         val pageUrl = tab.pageUrl
         if (pageUrl.isEmpty()) return null
 
-        val url = request.url.toString()
         if (!UrlUtils.isHttp(url)) return null
 
         val type = RequestTypes.of(request, url)
@@ -136,9 +139,6 @@ class OrbitWebViewClient(
         // JNI sınırı geçilmiyor, adres ayrıştırılmıyor, motorun global
         // kilidi alınmıyor. Tablo motor hazır olmadan önce kurulduğu için
         // soğuk açılışta da engelleme çalışır.
-        // `request.url` zaten çözümlenmiş bir `Uri`; adres yeniden
-        // ayrıştırılmasın diye ana bilgisayar buradan okunur.
-        val host = request.url.host
         if (host != null && adblock.hosts.blocks(host)) {
             return blockedFor(request, url, type)
         }
@@ -182,8 +182,16 @@ class OrbitWebViewClient(
     override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
         // "about:blank" başlangıç ekranının taşıyıcısıdır, gerçek gezinme değil.
         if (url != BLANK) tab.isHome = false
+        // Taban rengi belgeye göre: başlangıç ekranında tema zemini, gerçek
+        // sayfada beyaz (karartma açık değilse). Bkz. `applyBaseBackground`.
+        WebViewFactory.applyBaseBackground(view, prefs, blank = url == BLANK)
         tab.pageUrl = url
+        // Bekleyen adres yalnızca `pageUrl` boşken adres çubuğuna
+        // düşer; gerçek gezinme başladığına göre artık gereksiz.
+        tab.pendingUrl = null
         tab.blockedOnPage = 0
+        // Yeni belge: eski belgenin ses veren çerçeveleri artık yok.
+        MediaPlaybackTracker.reset(view)
         tab.allowlisted = prefs.isAllowlisted(UrlUtils.host(url))
         callbacks.onPageUrlChanged(tab, url)
         callbacks.onPageStarted(tab)
@@ -266,6 +274,18 @@ class OrbitWebViewClient(
     private companion object {
         const val BLANK = "about:blank"
         const val TAG = "OrbitBlock"
+        const val COSMETIC_CSS_PATH = "/orbit_inject_blocker.css"
+
+        private val IMAGE_EXTENSIONS =
+            arrayOf(".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".ico")
+
+        private val CSS_HEADERS = mapOf(
+            "Access-Control-Allow-Origin" to "*",
+            "Cache-Control" to "no-store, no-cache"
+        )
+
+        /** Engellenen görsel yanıtlarının ortak başlıkları; istek başına harita kurulmaz. */
+        private val IMAGE_HEADERS = mapOf("Access-Control-Allow-Origin" to "*")
 
         private val FILE_EXTENSIONS = setOf(
             "apk", "zip", "rar", "7z", "tar", "gz", "bz2", "xz", "zst",
@@ -286,13 +306,14 @@ class OrbitWebViewClient(
             0x01, 0x00, 0x00, 0x02, 0x02, 0x44, 0x01, 0x00, 0x3b
         )
 
+        /** Akış tüketildiği için yanıt nesnesi her seferinde yeni; başlıklar ve gövde paylaşılır. */
         val BLOCKED_IMAGE: WebResourceResponse
             get() = WebResourceResponse(
                 "image/gif",
                 "utf-8",
                 200,
                 "OK",
-                mapOf("Access-Control-Allow-Origin" to "*"),
+                IMAGE_HEADERS,
                 GIF_1X1.inputStream()
             )
     }

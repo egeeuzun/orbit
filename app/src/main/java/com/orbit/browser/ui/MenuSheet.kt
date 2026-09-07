@@ -55,6 +55,13 @@ class MenuSheet(private val context: Context) {
         root.addView(list)
 
         dialog.setContentView(root)
+        // Tablet ve yatay ekranlarda `BottomSheetDialog` küçük bir "peek"
+        // yüksekliğiyle açılıyor; menüde her satırın görünmesi için gerekli
+        // sürükleme, tablette kullanıcıyı yorar. Aşağıdaki iki ayar sayfayı
+        // yatay yerleşimlerde tümüyle açılmış olarak (skipCollapsed) gösterir
+        // ve peek yüksekliğini fiili içeriğine eşitler.
+        dialog.behavior.skipCollapsed = true
+        dialog.behavior.state = com.google.android.material.bottomsheet.BottomSheetBehavior.STATE_EXPANDED
         dialog.show()
     }
 

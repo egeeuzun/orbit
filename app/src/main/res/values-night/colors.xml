@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Koyu temanın etkin paleti. Adlar `values/colors.xml` ile birebir aynı;
+     yalnızca hangi ham renge işaret ettikleri değişir. -->
+<resources>
+    <color name="orbit_primary">@color/m3_primary_dark</color>
+    <color name="orbit_on_primary">@color/m3_on_primary_dark</color>
+    <color name="orbit_primary_container">@color/m3_primary_container_dark</color>
+    <color name="orbit_on_primary_container">@color/m3_on_primary_container_dark</color>
+    <color name="orbit_surface">@color/m3_surface_dark</color>
+    <color name="orbit_surface_container">@color/m3_surface_container_dark</color>
+    <color name="orbit_surface_container_high">@color/m3_surface_container_high_dark</color>
+    <color name="orbit_surface_container_lowest">@color/m3_surface_container_lowest_dark</color>
+    <color name="orbit_surface_container_low">@color/m3_surface_container_low_dark</color>
+    <color name="orbit_surface_container_highest">@color/m3_surface_container_highest_dark</color>
+    <color name="orbit_surface_variant">@color/m3_surface_variant_dark</color>
+    <color name="orbit_surface_dim">@color/m3_surface_dim_dark</color>
+    <color name="orbit_surface_bright">@color/m3_surface_bright_dark</color>
+    <color name="orbit_on_surface">@color/m3_on_surface_dark</color>
+    <color name="orbit_on_surface_variant">@color/m3_on_surface_variant_dark</color>
+</resources>

@@ -15,12 +15,40 @@ import androidx.webkit.WebViewFeature
 import com.orbit.browser.BuildConfig
 import com.orbit.browser.R
 import com.orbit.browser.data.Prefs
+import com.orbit.browser.media.MediaPlaybackTracker
 
 /**
  * WebView kurulumu — ayarların çoğu 1 GB RAM'li bir cihazda akıcı kalmak
  * için seçildi.
  */
 object WebViewFactory {
+
+    /**
+     * `WebViewFeature.isFeatureSupported` her çağrıda sağlayıcının özellik
+     * listesini tarar. Sonuç süreç ömrü boyunca değişmediği için bir kez
+     * hesaplanır; WebView kurulumu ve her gezinme (medya gözcüsü) bu
+     * yoldan geçer.
+     */
+    object Features {
+        val documentStartScript: Boolean by lazy {
+            WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)
+        }
+        val webMessageListener: Boolean by lazy {
+            WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)
+        }
+        val algorithmicDarkening: Boolean by lazy {
+            WebViewFeature.isFeatureSupported(WebViewFeature.ALGORITHMIC_DARKENING)
+        }
+        val forceDark: Boolean by lazy {
+            WebViewFeature.isFeatureSupported(WebViewFeature.FORCE_DARK)
+        }
+        val safeBrowsing: Boolean by lazy {
+            WebViewFeature.isFeatureSupported(WebViewFeature.SAFE_BROWSING_ENABLE)
+        }
+    }
+
+    /** Belge başı performans betiği ve onu üreten kaynak metin; değişmediyse yeniden eklenmez. */
+    private class PerfScript(val source: String, val handler: ScriptHandler)
 
     /** Masaüstü görünümü için kullanılan güncel Chrome istemci kimliği. */
     const val DESKTOP_UA =
@@ -37,17 +65,8 @@ object WebViewFactory {
             ViewGroup.LayoutParams.MATCH_PARENT
         )
         web.isScrollbarFadingEnabled = true
-        // Sayfa yüklenene kadar görünen zemin: koyu temada koyu, aydınlıkta
-        // açık — about:blank dahil beyaz flaş olmasın.
-        val isNight = (context.resources.configuration.uiMode and
-            android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
-            android.content.res.Configuration.UI_MODE_NIGHT_YES
-        web.setBackgroundColor(
-            androidx.core.content.ContextCompat.getColor(
-                context,
-                if (isNight) R.color.m3_surface_dark else R.color.m3_surface_light
-            )
-        )
+        // Görünüm `about:blank` ile doğuyor; taban rengi de ona göre.
+        applyBaseBackground(web, prefs, blank = true)
         // Yazılım katmanı zayıf GPU'larda kaydırmayı yavaşlatır; donanım açık kalır.
         web.overScrollMode = WebView.OVER_SCROLL_IF_CONTENT_SCROLLS
 
@@ -80,6 +99,9 @@ object WebViewFactory {
         applyPerfRuntime(context, web, prefs)
 
         web.addJavascriptInterface(bridge, "OrbitCosmetic")
+        // Arka planda süreci canlı tutan bildirim yalnızca gerçekten ses
+        // çalınırken çıksın diye sayfanın oynatma durumu izlenir.
+        MediaPlaybackTracker.attach(web)
 
         CookieManager.getInstance().apply {
             setAcceptCookie(true)
@@ -90,11 +112,45 @@ object WebViewFactory {
         return web
     }
 
+    /**
+     * WebView'in taban rengi: sayfa kendi arka planını boyamadığı her yerde
+     * (gövdede `background` tanımlı değilse, resim yüklenene kadar, sayfa
+     * sonundaki boşlukta) görünen renk.
+     *
+     * Eskiden koyu temada koşulsuz lacivert veriliyordu; sayfayı karartan
+     * bir şey olmadığı için siteler kendi **siyah metnini** o lacivertin
+     * üzerine çiziyor ve yazı okunmaz oluyordu (LinkedIn, forumlar…).
+     * Bu yüzden koyu taban yalnızca iki durumda kullanılır:
+     *
+     * - [blank]: başlangıç ekranının taşıyıcısı olan `about:blank` — burada
+     *   sayfa içeriği yok, beyaz flaşı önlemek gerekir;
+     * - "Web sayfalarını koyu yap" açıkken — o zaman metin de karartılır.
+     *
+     * Diğer her durumda taban, tarayıcıların ortak davranışı olan beyazdır.
+     */
+    fun applyBaseBackground(web: WebView, prefs: Prefs, blank: Boolean) {
+        val context = web.context
+        val night = (context.resources.configuration.uiMode and
+            android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+            android.content.res.Configuration.UI_MODE_NIGHT_YES
+        val color = when {
+            blank -> androidx.core.content.ContextCompat.getColor(
+                context,
+                if (night) R.color.m3_surface_dark else R.color.m3_surface_light
+            )
+            prefs.forceDarkWeb -> androidx.core.content.ContextCompat.getColor(
+                context, R.color.m3_surface_dark
+            )
+            else -> android.graphics.Color.WHITE
+        }
+        web.setBackgroundColor(color)
+    }
+
     fun applyTheme(web: WebView, prefs: Prefs) {
         val forceDark = prefs.forceDarkWeb
-        if (WebViewFeature.isFeatureSupported(WebViewFeature.ALGORITHMIC_DARKENING)) {
+        if (Features.algorithmicDarkening) {
             WebSettingsCompat.setAlgorithmicDarkeningAllowed(web.settings, forceDark)
-        } else if (WebViewFeature.isFeatureSupported(WebViewFeature.FORCE_DARK)) {
+        } else if (Features.forceDark) {
             @Suppress("DEPRECATION")
             WebSettingsCompat.setForceDark(
                 web.settings,
@@ -109,7 +165,7 @@ object WebViewFactory {
      * Varsayılan açık kalır, isteyen Ayarlar > Gizlilik'ten kapatabilir.
      */
     private fun applySafeBrowsing(s: WebSettings, prefs: Prefs) {
-        if (WebViewFeature.isFeatureSupported(WebViewFeature.SAFE_BROWSING_ENABLE)) {
+        if (Features.safeBrowsing) {
             WebSettingsCompat.setSafeBrowsingEnabled(s, prefs.safeBrowsing)
         }
     }
@@ -124,7 +180,7 @@ object WebViewFactory {
      * betik canlı görünüme eklenir ya da kaldırılır.
      */
     fun applyCosmeticRuntime(context: Context, web: WebView, prefs: Prefs) {
-        if (!WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) return
+        if (!Features.documentStartScript) return
         val wanted = prefs.adBlockEnabled && prefs.cosmeticFiltering
         val existing = web.getTag(R.id.orbit_cosmetic_script) as? ScriptHandler
 
@@ -172,16 +228,16 @@ object WebViewFactory {
      */
     fun applyPerfRuntime(context: Context, web: WebView, prefs: Prefs) {
         applyRendererPriority(web, prefs)
-        if (!WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) return
+        if (!Features.documentStartScript) return
         val wanted = prefs.optimizations || prefs.gpuEase ||
             (prefs.turboPack && (prefs.turboContentVis || prefs.turboNoAnim || prefs.turboLibCache)) ||
             prefs.siteOverrides.isNotEmpty()
-        val existing = web.getTag(R.id.orbit_perf_script) as? ScriptHandler
+        val existing = web.getTag(R.id.orbit_perf_script) as? PerfScript
 
         if (!wanted) {
             if (existing != null) {
                 try {
-                    existing.remove()
+                    existing.handler.remove()
                 } catch (t: Throwable) {
                     Log.w(TAG, "Бетік оптимизации не удалось снять: ${t.message}")
                 }
@@ -189,27 +245,33 @@ object WebViewFactory {
             }
             return
         }
-        // Скрипт всегда пересоздаётся: состав частей и профили могли измениться.
+
+        // Ayarlardan her dönüşte (onResume) çağrılır. Betik metni aynı
+        // kaldıysa oluşturucuya gidip betiği söküp yeniden kaydetmek boşa
+        // IPC demek; yalnızca içerik değiştiğinde yenilenir.
+        val script = buildPerfScript(prefs)
+        if (existing != null && existing.source == script) return
         try {
-            existing?.remove()
+            existing?.handler?.remove()
         } catch (_: Throwable) {
         }
         web.setTag(R.id.orbit_perf_script, null)
 
-        val script = buildPerfScript(prefs)
         if (script.isEmpty()) return
         try {
             val handler = WebViewCompat.addDocumentStartJavaScript(web, script, setOf("*"))
-            web.setTag(R.id.orbit_perf_script, handler)
+            web.setTag(R.id.orbit_perf_script, PerfScript(script, handler))
         } catch (t: Throwable) {
             Log.w(TAG, "Бетік оптимизации не удалось добавить: ${t.message}")
         }
-        Log.i(
-            TAG,
-            "perf: глобально{base=${prefs.optimizations},cv=${prefs.turboPack && prefs.turboContentVis}," +
-                "anim=${prefs.turboPack && prefs.turboNoAnim},gpu=${prefs.gpuEase}," +
-                "lib=${prefs.turboPack && prefs.turboLibCache}} профили=${prefs.siteOverrides}"
-        )
+        if (BuildConfig.DEBUG) {
+            Log.i(
+                TAG,
+                "perf: глобально{base=${prefs.optimizations},cv=${prefs.turboPack && prefs.turboContentVis}," +
+                    "anim=${prefs.turboPack && prefs.turboNoAnim},gpu=${prefs.gpuEase}," +
+                    "lib=${prefs.turboPack && prefs.turboLibCache}} профили=${prefs.siteOverrides}"
+            )
+        }
     }
 
     private fun buildPerfScript(prefs: Prefs): String {
@@ -283,6 +345,7 @@ object WebViewFactory {
         web.stopLoading()
         web.onPause()
         web.removeJavascriptInterface("OrbitCosmetic")
+        MediaPlaybackTracker.detach(web)
         (web.parent as? ViewGroup)?.removeView(web)
         web.destroy()
     }

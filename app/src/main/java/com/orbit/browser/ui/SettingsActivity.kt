@@ -159,6 +159,13 @@ class SettingsActivity : AppCompatActivity() {
         switch(getString(R.string.pref_force_dark), null, prefs.forceDarkWeb) {
             prefs.forceDarkWeb = it
         }
+        action(getString(R.string.pref_url_bar), urlBarPositionSummary()) { chooseUrlBarPosition() }
+        action(getString(R.string.pref_reset_shortcuts), getString(R.string.pref_reset_shortcuts_sum)) {
+            // Izgarayı elle düzenlerken çıkmaza girilmesin: kaldırılan
+            // kısayollar buradan geri gelir.
+            prefs.resetHomeShortcuts()
+            Toast.makeText(this, R.string.shortcuts_reset_done, Toast.LENGTH_SHORT).show()
+        }
 
         header(R.string.settings_about)
         action(getString(R.string.pref_about_orbit), getString(R.string.pref_about_orbit_sum, com.orbit.browser.BuildConfig.VERSION_NAME)) {
@@ -475,6 +482,32 @@ class SettingsActivity : AppCompatActivity() {
         1 -> getString(R.string.theme_light)
         2 -> getString(R.string.theme_dark)
         else -> getString(R.string.theme_system)
+    }
+
+    private fun urlBarPositionSummary(): String = when (prefs.urlBarPosition) {
+        Prefs.URL_BAR_TOP -> getString(R.string.pref_url_bar_sum_top)
+        Prefs.URL_BAR_BOTTOM -> getString(R.string.pref_url_bar_sum_bottom)
+        else -> getString(R.string.pref_url_bar_sum_auto)
+    }
+
+    private fun chooseUrlBarPosition() {
+        val options = arrayOf(
+            getString(R.string.url_bar_auto),
+            getString(R.string.url_bar_top),
+            getString(R.string.url_bar_bottom)
+        )
+        val values = arrayOf(Prefs.URL_BAR_AUTO, Prefs.URL_BAR_TOP, Prefs.URL_BAR_BOTTOM)
+        val checked = values.indexOf(prefs.urlBarPosition).coerceAtLeast(0)
+        AlertDialog.Builder(this)
+            .setTitle(R.string.pref_url_bar)
+            .setSingleChoiceItems(options, checked) { dialog, which ->
+                prefs.urlBarPosition = values[which]
+                dialog.dismiss()
+                build()
+                // MainActivity onResume'da farkı yakalayıp yeniden yaratılır.
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
     }
 
     private fun chooseTheme() {

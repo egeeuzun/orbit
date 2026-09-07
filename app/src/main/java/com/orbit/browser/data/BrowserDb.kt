@@ -23,7 +23,31 @@ class BrowserDb private constructor(context: Context) :
         }, "browser-db").apply { isDaemon = true }
     }
 
+    /**
+     * Çevrimiçi arama önerileri için ayrı iş parçacığı. Eskiden ağ isteği
+     * veritabanı sırasına giriyordu: yavaş bağlantıda her tuş vuruşu 2,5 s'ye
+     * kadar bekleyebilen bir isteği kuyruğa ekliyor, arkasındaki geçmiş
+     * yazımları ve yerel öneriler de onu bekliyordu.
+     */
+    private val net = Executors.newSingleThreadExecutor { r ->
+        Thread({
+            Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND)
+            r.run()
+        }, "suggest-net").apply { isDaemon = true }
+    }
+
+    /** Sırada bekleyen eskimiş çevrimiçi sorgular ağa hiç çıkmadan düşer. */
+    @Volatile
+    private var latestOnlineQuery: String = ""
+
     private val main = Handler(Looper.getMainLooper())
+
+    init {
+        // WAL: her ziyaret kaydında günlük dosyası yaratıp silmek ve iki kez
+        // fsync yapmak yerine tek ekleme; okuyucular yazarı beklemez. Yavaş
+        // eMMC'li cihazlarda sayfa sonu geçmiş yazımı ucuzlar.
+        setWriteAheadLoggingEnabled(true)
+    }
 
     /** Sorguyu arka planda çalıştırır, sonucu ana iş parçacığında verir. */
     private fun <T> async(work: () -> T, then: (T) -> Unit) {
@@ -41,28 +65,45 @@ class BrowserDb private constructor(context: Context) :
     fun suggestAsync(query: String, then: (List<Entry>) -> Unit) =
         async({ suggest(query) }, then)
 
-    /** Adres çubuğu önerileri: yerel geçmiş + isteğe bağlı seçili arama motoru önerileri. */
+    /**
+     * Adres çubuğu önerileri: yerel geçmiş + isteğe bağlı seçili arama
+     * motoru önerileri.
+     *
+     * [then] iki kez çağrılabilir: önce yerel sonuçlar hemen, sonra (varsa)
+     * çevrimiçi önerilerle birleşmiş liste. Böylece yerel öneriler ağı
+     * beklemez ve ağ isteği veritabanı iş parçacığını tıkamaz.
+     */
     fun suggestWithOnlineAsync(
         query: String,
         includeOnline: Boolean,
         engineUrl: String,
         then: (List<Entry>) -> Unit
-    ) = async({
-        val local = suggest(query, limit = 5)
-        if (!includeOnline) {
-            local
-        } else {
-            val online = SearchSuggestions.fetch(query, engineUrl)
-            val combined = ArrayList<Entry>(local.size + online.size)
-            combined.addAll(local)
-            for (item in online) {
-                if (local.none { it.title.equals(item.title, ignoreCase = true) }) {
-                    combined.add(item)
+    ) {
+        if (includeOnline) latestOnlineQuery = query
+        async({ suggest(query, limit = 5) }) { local ->
+            then(local)
+            if (!includeOnline) return@async
+            net.execute {
+                // Kullanıcı yazmaya devam ettiyse bu sorgu için ağa çıkılmaz.
+                if (latestOnlineQuery != query) return@execute
+                val online = try {
+                    SearchSuggestions.fetch(query, engineUrl)
+                } catch (_: Throwable) {
+                    emptyList()
                 }
+                if (online.isEmpty() || latestOnlineQuery != query) return@execute
+                val combined = ArrayList<Entry>(local.size + online.size)
+                combined.addAll(local)
+                for (item in online) {
+                    if (local.none { it.title.equals(item.title, ignoreCase = true) }) {
+                        combined.add(item)
+                    }
+                }
+                val result = if (combined.size > 7) combined.subList(0, 7) else combined
+                main.post { then(result) }
             }
-            combined.take(7)
         }
-    }, then)
+    }
 
     /** Başlangıç ekranı kısayolları. */
     fun topSitesAsync(limit: Int, then: (List<Entry>) -> Unit) =

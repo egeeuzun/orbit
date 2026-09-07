@@ -1,0 +1,169 @@
+name: Release
+
+# Builds the four ABI variants, signs them with the rotation lineage and
+# publishes them on a GitHub Release.
+#
+# Gradle deliberately does not sign the release build: the APKs carry a
+# SigningCertificateLineage (APK Signature Scheme v3.1) that Gradle cannot
+# produce, so signing happens here with apksigner, exactly the way
+# docs/pipeline/brief.md describes it for a local release.
+#
+# Secrets live on the `release` environment (not on the repository), which is
+# gated by a required reviewer:
+#   RELEASE_KEYSTORE_B64       base64 of orbit-release.jks
+#   RELEASE_KEYSTORE_PASSWORD  its password (used for both store and key)
+#   RELEASE_LINEAGE_B64        base64 of orbit-lineage.bin
+#   DEBUG_KEYSTORE_B64         base64 of the debug.keystore that signed <= 1.228
+#
+# The debug keystore is not optional: the lineage carries the old certificate,
+# but v1/v2 signing for pre-Android-13 devices needs its private key.
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build, without the leading v (e.g. 2.5)'
+        required: true
+
+permissions:
+  contents: write
+
+env:
+  BUILD_TOOLS: '36.0.0'
+  RELEASE_KEY_ALIAS: orbit
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    # The signing secrets live on this environment, not on the repository, and
+    # the environment requires a reviewer. A run therefore pauses before this
+    # job starts until it is approved, and no other workflow can read the key.
+    environment: release
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Refuse to build with keystore.properties present
+        # Gradle would then sign with that single key and no lineage, which
+        # breaks in-place updates for everyone on an older release.
+        run: |
+          if [ -f keystore.properties ]; then
+            echo "::error::keystore.properties is present; the release would be signed without a lineage."
+            exit 1
+          fi
+
+      - name: Resolve version
+        id: version
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            version="${{ inputs.version }}"
+          else
+            version="${GITHUB_REF_NAME#v}"
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Building Orbit $version"
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install SDK packages
+        run: sdkmanager "platforms;android-36" "build-tools;${BUILD_TOOLS}"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      # The prebuilt libadblock_jni.so files are committed, and
+      # buildNativeAdblock disables itself when cargo is missing, so the Rust
+      # toolchain is not needed here.
+      - name: Build unsigned release APKs
+        run: ./gradlew clean assembleRelease --no-daemon
+
+      - name: Decode signing material
+        env:
+          RELEASE_KEYSTORE_B64: ${{ secrets.RELEASE_KEYSTORE_B64 }}
+          RELEASE_LINEAGE_B64: ${{ secrets.RELEASE_LINEAGE_B64 }}
+          DEBUG_KEYSTORE_B64: ${{ secrets.DEBUG_KEYSTORE_B64 }}
+        run: |
+          set -euo pipefail
+          keys="$RUNNER_TEMP/keys"
+          mkdir -p "$keys"
+          chmod 700 "$keys"
+          printf '%s' "$RELEASE_KEYSTORE_B64" | base64 -d > "$keys/orbit-release.jks"
+          printf '%s' "$RELEASE_LINEAGE_B64"  | base64 -d > "$keys/orbit-lineage.bin"
+          printf '%s' "$DEBUG_KEYSTORE_B64"   | base64 -d > "$keys/debug.keystore"
+          for f in orbit-release.jks orbit-lineage.bin debug.keystore; do
+            test -s "$keys/$f" || { echo "::error::$f decoded empty; check the secret"; exit 1; }
+          done
+
+      - name: Align, sign and verify
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          bt="$ANDROID_HOME/build-tools/$BUILD_TOOLS"
+          keys="$RUNNER_TEMP/keys"
+          src=app/build/outputs/apk/release
+          mkdir -p dist
+
+          for abi in arm64-v8a armeabi-v7a x86_64 universal; do
+            "$bt/zipalign" -p -f 4 \
+              "$src/app-$abi-release-unsigned.apk" \
+              "$RUNNER_TEMP/aligned-$abi.apk"
+
+            # The oldest signer in the lineage goes first: v1/v2 signing needs
+            # it, and pre-Android-13 devices validate against it.
+            "$bt/apksigner" sign \
+              --lineage "$keys/orbit-lineage.bin" \
+              --ks "$keys/debug.keystore" \
+                --ks-key-alias androiddebugkey --ks-pass pass:android --key-pass pass:android \
+              --next-signer --ks "$keys/orbit-release.jks" \
+                --ks-key-alias "$RELEASE_KEY_ALIAS" \
+                --ks-pass "pass:$KEYSTORE_PASSWORD" --key-pass "pass:$KEYSTORE_PASSWORD" \
+              --min-sdk-version 21 \
+              --out "dist/orbit-$VERSION-$abi.apk" \
+              "$RUNNER_TEMP/aligned-$abi.apk"
+
+            # Old devices must still see the previous certificate, and
+            # Android 13+ must see the rotated one. Both have to hold.
+            "$bt/apksigner" verify --print-certs \
+              --min-sdk-version 21 --max-sdk-version 32 "dist/orbit-$VERSION-$abi.apk"
+            "$bt/apksigner" verify --print-certs \
+              --min-sdk-version 33 "dist/orbit-$VERSION-$abi.apk"
+          done
+
+          # v4 signatures are only used by `adb install --incremental`.
+          rm -f dist/*.idsig
+          ls -l dist
+
+      - name: Checksums
+        run: cd dist && sha256sum *.apk | tee SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: orbit-${{ steps.version.outputs.version }}-apks
+          path: dist/
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_type == 'tag' && github.ref_name || format('v{0}', steps.version.outputs.version) }}
+          name: Orbit ${{ steps.version.outputs.version }}
+          # Published as a draft so the release notes can be written by hand
+          # before it goes public; the APKs are already attached.
+          body: |
+            Full changelog: [CHANGES.md](https://github.com/${{ github.repository }}/blob/master/CHANGES.md)
+
+            `universal` works on any device; the per-ABI files are smaller.
+            Verify a download against `SHA256SUMS.txt`.
+          draft: true
+          files: |
+            dist/*.apk
+            dist/SHA256SUMS.txt

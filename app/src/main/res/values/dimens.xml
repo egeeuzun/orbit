@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Adres çubuğu içeren alt taşıyıcının sağ/sol iç kenar boşluğu.
+         Telefonda 0dp (çubuk kenardan kenara), tabletlerde ve geniş ekranlarda
+         (yatay telefon, katlanabilir açık) çubuk ortada ve daha dar görünecek
+         şekilde artar. `values-w600dp` ve `values-sw600dp` bu değeri geçersiz
+         kılar. -->
+    <dimen name="bottom_bar_side_padding">0dp</dimen>
+
+    <!-- Alt çubuğun dokunma hedef yüksekliği. Tabletlerde ve geniş ekranlarda
+         parmak daha az takılsın diye biraz büyür. -->
+    <dimen name="bottom_bar_height">56dp</dimen>
+
+    <!-- Adres çubuğu yüksekliği. Tabletlerde biraz büyüyerek metin ve klavye
+         kolay hedeflenir. -->
+    <dimen name="omnibox_height">40dp</dimen>
+
+    <!-- Adres çubuğu metin boyu. Tabletlerde okunması kolaylaşsın diye artar. -->
+    <dimen name="omnibox_text_size">14sp</dimen>
+
+    <!-- Alt çubuk düğmelerinin dokunma alanı. Tabletlerde büyür. -->
+    <dimen name="nav_button_size">40dp</dimen>
+    <dimen name="nav_button_padding">9dp</dimen>
+</resources>

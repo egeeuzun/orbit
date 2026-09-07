@@ -1,7 +1,6 @@
 package com.orbit.browser.browser
 
 import android.content.Context
-import android.net.Uri
 import android.webkit.WebResourceResponse
 import com.orbit.browser.data.Prefs
 
@@ -37,23 +36,38 @@ object LibCache {
         Entry("cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js", "lodash-4.17.21.min.js", JS)
     )
 
-    /** Возвращает локальную копию, если URL совпадает с известной версией
-     *  и для хоста эффективно включена опция lib. */
-    fun match(context: Context, prefs: Prefs, url: String): WebResourceResponse? {
-        val host = Uri.parse(url).host ?: return null
+    /** Yalnızca bu ana bilgisayarlardan gelen istekler incelenir; geri kalanı
+     *  için adres taraması hiç yapılmaz. */
+    private val cdnHosts = hashSetOf("cdn.jsdelivr.net", "code.jquery.com", "cdnjs.cloudflare.com")
+
+    /**
+     * Возвращает локальную копию, если URL совпадает с известной версией
+     * и для хоста эффективно включена опция lib.
+     *
+     * İstek yolunda çağrılır: önce ucuz bayrak ([Prefs.libCacheAnywhere]),
+     * sonra ana bilgisayar kümesi, en son adres taraması. Adres için
+     * `lowercase()` kopyası çıkarılmaz; karşılaştırma yerinde yapılır.
+     */
+    fun match(context: Context, prefs: Prefs, url: String, host: String?): WebResourceResponse? {
+        if (!prefs.libCacheAnywhere) return null
+        if (host == null || host !in cdnHosts) return null
         val global = prefs.turboPack && prefs.turboLibCache
         if (!prefs.effectiveFeature(host, Prefs.FEATURE_LIB, global)) return null
-        val needle = url.lowercase()
-        val e = entries.firstOrNull { needle.contains(it.marker) } ?: return null
+        var e: Entry? = null
+        for (candidate in entries) {
+            if (url.contains(candidate.marker, ignoreCase = true)) { e = candidate; break }
+        }
+        if (e == null) return null
         return try {
             val stream = context.assets.open("libcache/${e.asset}")
-            val headers = mapOf(
-                "Access-Control-Allow-Origin" to "*",
-                "Cache-Control" to "public, max-age=31536000, immutable"
-            )
-            WebResourceResponse(e.mime, "utf-8", 200, "OK", headers, stream)
+            WebResourceResponse(e.mime, "utf-8", 200, "OK", HEADERS, stream)
         } catch (t: Throwable) {
             null
         }
     }
+
+    private val HEADERS = mapOf(
+        "Access-Control-Allow-Origin" to "*",
+        "Cache-Control" to "public, max-age=31536000, immutable"
+    )
 }

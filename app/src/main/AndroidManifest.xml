@@ -8,6 +8,11 @@
         android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="28" />
 
+    <!-- Arka planda radyo/medya çalarken sürecin foreground kalması için -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <!-- Sekmeler dışa açılan bağlantıları sistem uygulamalarına devredebilir. -->
     <queries>
         <intent>
@@ -92,5 +97,11 @@
             android:configChanges="orientation|screenSize|keyboardHidden|uiMode"
             android:label="@string/settings_about"
             android:parentActivityName=".ui.SettingsActivity" />
+
+        <!-- Arka plan radyo/medya için süreç canlı tutucu -->
+        <service
+            android:name=".media.MediaKeepAliveService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
     </application>
 </manifest>

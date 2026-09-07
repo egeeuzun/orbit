@@ -88,6 +88,8 @@ class TranslateSheet(
             onTranslate(translateUrl)
         }
 
+        dialog.behavior.skipCollapsed = true
+        dialog.behavior.state = com.google.android.material.bottomsheet.BottomSheetBehavior.STATE_EXPANDED
         dialog.show()
     }
 }

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Başlangıç ekranındaki kısayol ızgarasının sütun sayısı. Daha büyük
+     ekranlarda daha çok kısayol sığar. `values-w600dp` ve `values-sw720dp`
+     bu değeri geçersiz kılar. -->
+<resources>
+    <integer name="home_shortcut_columns">4</integer>
+</resources>

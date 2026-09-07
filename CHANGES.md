@@ -1,5 +1,105 @@
 # История изменений / Changelog
 
+## 2.5 — 7 September 2026
+
+Version bumped from 2.0.0 to 2.5 (version code 2500).
+
+### Background audio
+- **Radio and video keep playing when you leave Orbit.** The browser no
+  longer pauses WebView when it goes to the background — those calls were
+  cutting Chromium's audio pipeline.
+- A small foreground notification keeps the process alive while sound is
+  playing, with **Play / Pause / Stop** buttons. It also registers a
+  `MediaSession`, so lock-screen controls and headset/Bluetooth buttons work.
+- The notification only appears when a page is **actually playing audible
+  sound**. A watcher script in each frame reports playback state, so leaving
+  a silent page no longer claims "Orbit is playing media". Stop ends
+  playback for real, not just the notification.
+
+### Tablets, foldables and landscape
+- **The address bar can sit at the top or the bottom.** Settings →
+  Appearance → Address bar position: Automatic (top on tablets, bottom on
+  phones), Always top, Always bottom. Both layouts share the same view ids,
+  so one binding drives either one.
+- Shortcut grid columns follow screen width: 4 on phones, 6 on wide screens,
+  8 on large tablets.
+- Touch targets, address bar height and text size grow on wide screens.
+- Bottom sheets (menu, tabs, shield, translate) open fully expanded instead
+  of a short peek that had to be dragged open on every use.
+
+### Old Samsung / low-end devices
+- **The About screen no longer crashes on Android 6 (TouchWiz).**
+  `@mipmap/ic_launcher` is an adaptive icon, which cannot be inflated as XML
+  below API 26; the screen and the home-screen pin dialog now use a classic
+  layer-list drawable instead.
+- Legacy PNG launcher icons added for API < 26.
+- **New tabs no longer show the previous tab's URL.** On skins where WebView
+  hands focus to the address bar while loading, the bar refused updates and
+  kept the old address. Focus is now released before the switch and the bar
+  is synced to the new tab even while focused.
+
+### Ad blocking
+- **The filter catalog grew from 14 to 30 lists, with global coverage.**
+  Added AdGuard Base, Tracking Protection, Mobile Ads, Annoyances and
+  Social; Fanboy Annoyance; and per-language lists for German, French,
+  Spanish/Portuguese, Japanese, Dutch, Italian, Chinese, Polish, Indonesian
+  and Korean, next to the existing Turkish and Russian ones.
+- Defaults stay conservative: the core global lists plus Turkish and Russian
+  are on, the rest are opt-in.
+
+### New in the browser
+- **Print page / save as PDF** from the menu, through the system print
+  dialog. Devices without a print service show a short error instead.
+- **The home screen shortcut grid is editable.** A "+" tile at the end opens
+  an Add shortcut dialog (name optional, address required). Long-press a
+  shortcut you added to edit or remove it; long-press one that came from
+  history to remove it — your history is kept, the site simply stops
+  appearing. Removed sites stay removed even after you visit them again.
+  Settings → Appearance → **Reset home shortcuts** restores everything.
+- **Favicons on the home grid.** Icons already saved while browsing are
+  shown on the tiles; sites without one keep the letter tile and fill in on
+  the next visit. Icons are decoded downsampled (36 KB each instead of
+  147 KB) on a background thread and cached, so on a 1 GB device the whole
+  grid costs about 0.3 MB and cold start is unchanged (666 ms with icons vs
+  673 ms without, measured on a Galaxy J2 Prime).
+
+### Dark theme fixes
+- **Bottom sheets, dialogs and the About screen were stock Material black.**
+  The palette lived in two files and the sheet/dialog themes never got it,
+  so the menu, tab list, shield, translate sheet and every alert dialog
+  painted themselves `#1D1B20` (or AppCompat's `#424242` grey) instead of
+  Orbit's navy. The palette is now defined once and applied to the app
+  theme, the bottom sheet theme, alert dialogs and the window background.
+- **Pages are no longer dark-on-dark.** In dark mode the WebView base colour
+  was always navy, so any site that does not paint its own background drew
+  its black text onto it and became unreadable (LinkedIn, forums). The base
+  is white for normal pages; it stays dark only for the start page and when
+  "Darken sites" is enabled.
+
+### Performance
+- **Address bar suggestions no longer fire per keystroke.** Queries wait for
+  a 150 ms pause, and online suggestions moved off the database thread —
+  local history results appear immediately instead of queueing behind a
+  network request that could take seconds on a slow link.
+- History writes use SQLite WAL, so a page finishing no longer costs two
+  fsyncs on slow eMMC.
+- Favicon saving (scale + PNG compress) moved off the main thread, and is
+  skipped entirely when a fresh file already exists.
+- WebView feature checks are resolved once instead of on every navigation,
+  and the document-start performance script is only re-registered when its
+  contents actually change.
+- The request path parses each URL once: no lowercase copies, shared header
+  maps, and the local library cache is skipped behind a single flag when it
+  is off. Per-site optimization profiles are parsed once into memory instead
+  of on every request.
+- The reload icon, search hint and status line are only redrawn when their
+  value changes; Kotlin's null-check intrinsics are compiled out.
+- Under memory pressure the ad blocker's decision cache is released along
+  with background tabs.
+- The thin progress bar over the page was removed; loading state is tracked
+  in code, and the reload button still turns into a stop button while a page
+  is loading.
+
 ## 2.0.0 — 22 августа 2026 / 22 August 2026
 
 ### Русский

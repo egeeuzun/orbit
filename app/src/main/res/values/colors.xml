@@ -12,6 +12,12 @@
     <color name="m3_surface_container_high_light">#E2E8F0</color>
     <color name="m3_on_surface_light">#0F172A</color>
     <color name="m3_on_surface_variant_light">#64748B</color>
+    <color name="m3_surface_container_lowest_light">#FFFFFF</color>
+    <color name="m3_surface_container_low_light">#F8FAFC</color>
+    <color name="m3_surface_container_highest_light">#CBD5E1</color>
+    <color name="m3_surface_variant_light">#E2E8F0</color>
+    <color name="m3_surface_dim_light">#E2E8F0</color>
+    <color name="m3_surface_bright_light">#FFFFFF</color>
 
     <!-- Material 3 Palette Dark -->
     <color name="m3_primary_dark">#60A5FA</color>
@@ -23,4 +29,29 @@
     <color name="m3_surface_container_high_dark">#334155</color>
     <color name="m3_on_surface_dark">#F8FAFC</color>
     <color name="m3_on_surface_variant_dark">#94A3B8</color>
+    <color name="m3_surface_container_lowest_dark">#0A0F1C</color>
+    <color name="m3_surface_container_low_dark">#172236</color>
+    <color name="m3_surface_container_highest_dark">#475569</color>
+    <color name="m3_surface_variant_dark">#1E293B</color>
+    <color name="m3_surface_dim_dark">#0B1220</color>
+    <color name="m3_surface_bright_dark">#334155</color>
+
+    <!-- Etkin palet. Temalar yalnızca bu adları kullanır; gece sürümü
+         `values-night/colors.xml` içinde. Palet tek yerde durduğu için ana
+         tema ile alt sayfa (BottomSheet) teması birbirinden ayrışamaz. -->
+    <color name="orbit_primary">@color/m3_primary_light</color>
+    <color name="orbit_on_primary">@color/m3_on_primary_light</color>
+    <color name="orbit_primary_container">@color/m3_primary_container_light</color>
+    <color name="orbit_on_primary_container">@color/m3_on_primary_container_light</color>
+    <color name="orbit_surface">@color/m3_surface_light</color>
+    <color name="orbit_surface_container">@color/m3_surface_container_light</color>
+    <color name="orbit_surface_container_high">@color/m3_surface_container_high_light</color>
+    <color name="orbit_surface_container_lowest">@color/m3_surface_container_lowest_light</color>
+    <color name="orbit_surface_container_low">@color/m3_surface_container_low_light</color>
+    <color name="orbit_surface_container_highest">@color/m3_surface_container_highest_light</color>
+    <color name="orbit_surface_variant">@color/m3_surface_variant_light</color>
+    <color name="orbit_surface_dim">@color/m3_surface_dim_light</color>
+    <color name="orbit_surface_bright">@color/m3_surface_bright_light</color>
+    <color name="orbit_on_surface">@color/m3_on_surface_light</color>
+    <color name="orbit_on_surface_variant">@color/m3_on_surface_variant_light</color>
 </resources>

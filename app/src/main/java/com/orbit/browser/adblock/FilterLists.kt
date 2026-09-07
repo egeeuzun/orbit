@@ -14,6 +14,7 @@ data class FilterList(
 object FilterLists {
 
     val CATALOG: List<FilterList> = listOf(
+        // --------------------- Küresel çekirdek (öntanımlı açık) ------------------
         FilterList(
             "ubo-filters", "uBlock Origin — temel",
             "https://ublockorigin.github.io/uAssets/filters/filters.txt", true
@@ -47,16 +48,24 @@ object FilterLists {
             "https://pgl.yoyo.org/adservers/serverlist.php?hostformat=adblockplus&mimetype=plaintext", true
         ),
         FilterList(
-            "adguard-turkish", "AdGuard — Türkçe filtreler",
-            "https://filters.adtidy.org/extension/ublock/filters/13.txt", true
+            "adguard-base", "AdGuard — İngilizce/temel",
+            "https://filters.adtidy.org/extension/ublock/filters/2.txt", true
         ),
         FilterList(
-            "adguard-russian", "AdGuard — Rusça filtreler",
-            "https://filters.adtidy.org/extension/ublock/filters/1.txt", true
+            "adguard-tracking", "AdGuard — İzleyici koruması",
+            "https://filters.adtidy.org/extension/ublock/filters/3.txt", true
         ),
         FilterList(
-            "ruadlist", "RU AdList (EasyList Rusya)",
-            "https://easylist-downloads.adblockplus.org/advblock.txt", true
+            "adguard-mobile", "AdGuard — Mobil reklamlar",
+            "https://filters.adtidy.org/extension/ublock/filters/11.txt", true
+        ),
+        FilterList(
+            "adguard-annoyances", "AdGuard — Rahatsız edici öğeler",
+            "https://filters.adtidy.org/extension/ublock/filters/14.txt", false
+        ),
+        FilterList(
+            "adguard-social", "AdGuard — Sosyal medya",
+            "https://filters.adtidy.org/extension/ublock/filters/4.txt", false
         ),
         FilterList(
             "easylist-cookie", "EasyList Cookie (çerez uyarıları)",
@@ -69,6 +78,64 @@ object FilterLists {
         FilterList(
             "fanboy-social", "Fanboy — sosyal medya butonları",
             "https://easylist.to/easylist/fanboy-social.txt", false
+        ),
+        FilterList(
+            "fanboy-annoyance", "Fanboy — genel rahatsızlık",
+            "https://secure.fanboy.co.nz/fanboy-annoyance.txt", false
+        ),
+
+        // --------------------- Yerel/dile özgü listeler (öntanımlı açık: TR/RU) ---
+        FilterList(
+            "adguard-turkish", "AdGuard — Türkçe filtreler",
+            "https://filters.adtidy.org/extension/ublock/filters/13.txt", true
+        ),
+        FilterList(
+            "adguard-russian", "AdGuard — Rusça filtreler",
+            "https://filters.adtidy.org/extension/ublock/filters/1.txt", true
+        ),
+        FilterList(
+            "ruadlist", "RU AdList (EasyList Rusya)",
+            "https://easylist-downloads.adblockplus.org/advblock.txt", true
+        ),
+        FilterList(
+            "adguard-german", "AdGuard — Almanca filtreler",
+            "https://filters.adtidy.org/extension/ublock/filters/6.txt", false
+        ),
+        FilterList(
+            "adguard-french", "AdGuard — Fransızca filtreler",
+            "https://filters.adtidy.org/extension/ublock/filters/16.txt", false
+        ),
+        FilterList(
+            "adguard-spanish-portuguese", "AdGuard — İspanyolca/Portekizce",
+            "https://filters.adtidy.org/extension/ublock/filters/9.txt", false
+        ),
+        FilterList(
+            "adguard-japanese", "AdGuard — Japonca filtreler",
+            "https://filters.adtidy.org/extension/ublock/filters/7.txt", false
+        ),
+        FilterList(
+            "adguard-dutch", "AdGuard — Felemenkçe filtreler",
+            "https://filters.adtidy.org/extension/ublock/filters/8.txt", false
+        ),
+        FilterList(
+            "easylist-italy", "EasyList — İtalyanca",
+            "https://easylist-downloads.adblockplus.org/easylistitaly.txt", false
+        ),
+        FilterList(
+            "easylist-china", "EasyList — Çince",
+            "https://easylist-downloads.adblockplus.org/easylistchina.txt", false
+        ),
+        FilterList(
+            "easylist-poland", "EasyList — Lehçe",
+            "https://easylist-downloads.adblockplus.org/easylistpolish.txt", false
+        ),
+        FilterList(
+            "abpindo", "ABPindo (Endonezyaca)",
+            "https://raw.githubusercontent.com/ABPindo/indonesianadblockrules/master/subscriptions/abpindo.txt", false
+        ),
+        FilterList(
+            "koreanlist", "YousList (Korece)",
+            "https://raw.githubusercontent.com/yous/YousList/master/youslist.txt", false
         )
     )
 
