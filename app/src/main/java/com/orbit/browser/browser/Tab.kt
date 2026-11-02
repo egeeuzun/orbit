@@ -17,6 +17,13 @@ class Tab(val id: Long, val incognito: Boolean) {
     /** Bu sekmenin WebView'ine bağlı kozmetik köprüsü; WebView ile birlikte doğar ve ölür. */
     var bridge: CosmeticBridge? = null
 
+    /**
+     * Bu sekmeyi `window.open` ile açan sekme. Bu sekme önündeyken açan
+     * uyutulmaz; yoksa `window.opener` kopar (OAuth açılır pencereleri
+     * sonucu ona `postMessage` ile döndürür).
+     */
+    var opener: Tab? = null
+
     /** Henüz WebView oluşturulmadan yüklenmesi istenen adres. */
     var pendingUrl: String? = null
 

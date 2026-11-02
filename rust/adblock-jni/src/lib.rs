@@ -33,7 +33,8 @@ struct Handle {
 }
 
 /// Motor birden çok Java iş parçacığından aynı anda sorgulanıyor. Bu bağ,
-/// `unsync-regex-caching` özelliği yanlışlıkla açılırsa derlemeyi durdurur.
+/// `single-thread` özelliği (varsayılanlarda açık) yanlışlıkla gelirse
+/// derlemeyi durdurur.
 const _: fn() = || {
     fn assert_send_sync<T: Send + Sync>() {}
     assert_send_sync::<Engine>();
@@ -113,8 +114,13 @@ pub extern "system" fn Java_com_orbit_browser_adblock_NativeAdblock_nativeNew(
 ) -> jlong {
     let text = jstr(&mut env, &rules);
     let mut set = FilterSet::new(false);
-    set.add_filter_list(&text, ParseOptions::default());
-    let engine = Engine::from_filter_set(set, optimize == JNI_TRUE);
+    // 0.13'ten beri metin sahiplenilir; ayrı bir kopya oluşmaz.
+    set.add_filter_list(text, ParseOptions::default());
+    let engine = if optimize == JNI_TRUE {
+        Engine::new_with_filter_set(set)
+    } else {
+        Engine::new_with_filter_set_no_optimize(set)
+    };
     into_ptr(Handle {
         engine: Arc::new(engine),
     })
@@ -133,7 +139,7 @@ pub extern "system" fn Java_com_orbit_browser_adblock_NativeAdblock_nativeFromCa
         Ok(b) => b,
         Err(_) => return 0,
     };
-    let mut engine = Engine::new(true);
+    let mut engine = Engine::default();
     match engine.deserialize(&bytes) {
         Ok(_) => into_ptr(Handle {
             engine: Arc::new(engine),
@@ -152,11 +158,8 @@ pub extern "system" fn Java_com_orbit_browser_adblock_NativeAdblock_nativeSerial
         Some(h) => h,
         None => return std::ptr::null_mut(),
     };
-    match h.engine.serialize() {
-        Ok(bytes) => match env.byte_array_from_slice(&bytes) {
-            Ok(a) => a.into_raw(),
-            Err(_) => std::ptr::null_mut(),
-        },
+    match env.byte_array_from_slice(&h.engine.serialize()) {
+        Ok(a) => a.into_raw(),
         Err(_) => std::ptr::null_mut(),
     }
 }
@@ -190,6 +193,33 @@ pub extern "system" fn Java_com_orbit_browser_adblock_NativeAdblock_nativeFree(
     }
 }
 
+extern "C" {
+    fn mallopt(param: i32, value: i32) -> i32;
+}
+
+/// bionic `malloc.h`: önbellekler dahil boş sayfaların tamamı (API 34+) ve
+/// yalnızca boş sayfalar (API 28+).
+const M_PURGE_ALL: i32 = -104;
+const M_PURGE: i32 = -101;
+
+/// Ayırıcının elinde tuttuğu boş sayfaları sisteme geri verir.
+///
+/// Motor derlemesi birkaç yüz MB'lık geçici yapı kurup bırakıyor; scudo
+/// bunları kendiliğinden geri vermediği için süreç RSS'i derlemenin
+/// tepesinde takılı kalıyordu (ölçüm: 334 MB yığının 266 MB'ı boş). Eski
+/// sürümlerde bilinmeyen parametre 0 döner ve hiçbir şey olmaz.
+#[no_mangle]
+pub extern "system" fn Java_com_orbit_browser_adblock_NativeAdblock_nativeReleaseFreeMemory(
+    _env: JNIEnv,
+    _class: JClass,
+) {
+    unsafe {
+        if mallopt(M_PURGE_ALL, 0) == 0 {
+            mallopt(M_PURGE, 0);
+        }
+    }
+}
+
 // ------------------------------------------------------------------ ağ filtresi
 
 /// `WebViewClient.shouldInterceptRequest` içinden çağrılır; sıcak yoldur.
@@ -201,6 +231,7 @@ pub extern "system" fn Java_com_orbit_browser_adblock_NativeAdblock_nativeMatch(
     url: JString,
     source_url: JString,
     request_type: JString,
+    method: JString,
 ) -> jint {
     let h = match as_handle(ptr) {
         Some(h) => h,
@@ -209,15 +240,19 @@ pub extern "system" fn Java_com_orbit_browser_adblock_NativeAdblock_nativeMatch(
     let url = jstr(&mut env, &url);
     let source = jstr(&mut env, &source_url);
     let rtype = jstr(&mut env, &request_type);
+    // Motor yöntemi küçük harfle bekliyor; bilinmeyen yöntemde `$method`
+    // kuralları (engelleme de istisna da) hiç eşleşmez.
+    let method = jstr(&mut env, &method).to_ascii_lowercase();
 
-    let req = match Request::new(&url, &source, &rtype) {
+    let req = match Request::new(&url, &source, &rtype, &method) {
         Ok(r) => r,
         Err(_) => return 0,
     };
     let res = h.engine.check_network_request(&req);
 
     let mut flags = 0;
-    if res.matched {
+    // 0.13: `matched` alanı kalktı; eşleşen engelleme kuralı `filter`da.
+    if res.filter.is_some() {
         flags |= R_MATCHED;
     }
     if res.exception.is_some() {
@@ -305,6 +340,10 @@ fn read_string_array(env: &mut JNIEnv, arr: jobjectArray) -> Vec<String> {
         };
         let s = JString::from(obj);
         let owned: Option<String> = env.get_string(&s).ok().map(|v| v.into());
+        // Her öğe bir yerel referans ve yerli çağrı bitene kadar yaşar.
+        // Kozmetik betiği tek çağrıda 20.000'e kadar ad gönderebiliyor;
+        // Android 7 ve öncesinde tablo 512 girdilik, taşarsa süreç çöker.
+        let _ = env.delete_local_ref(s);
         if let Some(v) = owned {
             out.push(v);
         }

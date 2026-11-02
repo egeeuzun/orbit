@@ -47,13 +47,20 @@ object FilterLists {
             "peter-lowe", "Peter Lowe — reklam/izleyici sunucuları",
             "https://pgl.yoyo.org/adservers/serverlist.php?hostformat=adblockplus&mimetype=plaintext", true
         ),
+        // AdGuard Base ve Tracking Protection öntanımlı KAPALI. İkisi
+        // EasyList/EasyPrivacy'nin yaptığını büyük ölçüde tekrarlıyor ama
+        // motoru dört katına çıkarıyor: 2.5'teki 14 listelik varsayılan
+        // derlemede ~450 MB yerel bellek (yalnız Tracking 13,8 MB metin,
+        // ~320 MB), önbellek 11 MB'tan 48 MB'a. 1 GB'lık cihazda derleme
+        // süreci 1 GB'ın üstüne çıkarıp OOM ile öldürüyordu. Ayrıntı:
+        // Prefs'teki `KEY_LISTS_MIGRATED_V3`.
         FilterList(
             "adguard-base", "AdGuard — İngilizce/temel",
-            "https://filters.adtidy.org/extension/ublock/filters/2.txt", true
+            "https://filters.adtidy.org/extension/ublock/filters/2.txt", false
         ),
         FilterList(
             "adguard-tracking", "AdGuard — İzleyici koruması",
-            "https://filters.adtidy.org/extension/ublock/filters/3.txt", true
+            "https://filters.adtidy.org/extension/ublock/filters/3.txt", false
         ),
         FilterList(
             "adguard-mobile", "AdGuard — Mobil reklamlar",
@@ -146,4 +153,10 @@ object FilterLists {
     fun byId(id: String): FilterList? = CATALOG.firstOrNull { it.id == id }
 
     val defaultIds: Set<String> get() = CATALOG.filter { it.defaultOn }.map { it.id }.toSet()
+
+    /**
+     * 2.5'te öntanımlı açılıp `KEY_LISTS_MIGRATED_V2` göçüyle herkese
+     * zorla eklenen, bellek yüzünden geri alınan listeler.
+     */
+    val withdrawnDefaults: Set<String> = setOf("adguard-base", "adguard-tracking")
 }

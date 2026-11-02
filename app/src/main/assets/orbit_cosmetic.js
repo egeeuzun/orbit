@@ -377,7 +377,7 @@
   }
 
   // Tek sayfalık uygulamalarda gövde çoğu kez bu olaydan sonra dolar.
-  document.addEventListener('DOMContentLoaded', function ()
+  document.addEventListener('DOMContentLoaded', function () {
     if (genericOn) scan(document.documentElement);
   }, { once: true });
 })();

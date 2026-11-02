@@ -26,7 +26,7 @@ fn samples() -> Vec<Request> {
         ("https://www.facebook.com/tr/?id=123&ev=PageView", "image"),
     ]
     .iter()
-    .map(|(u, t)| Request::new(u, SOURCE, t).unwrap())
+    .map(|(u, t)| Request::new(u, SOURCE, t, "get").unwrap())
     .collect()
 }
 
@@ -41,9 +41,9 @@ fn main() {
         .collect();
     paths.sort();
     for p in &paths {
-        set.add_filter_list(&std::fs::read_to_string(p).unwrap(), ParseOptions::default());
+        set.add_filter_list(std::fs::read_to_string(p).unwrap(), ParseOptions::default());
     }
-    let engine = Arc::new(Engine::from_filter_set(set, true));
+    let engine = Arc::new(Engine::new_with_filter_set(set));
 
     for threads in [1usize, 2, 4] {
         let t = Instant::now();
@@ -56,7 +56,7 @@ fn main() {
                 for i in 0..PER_THREAD {
                     if engine
                         .check_network_request(&reqs[i as usize % reqs.len()])
-                        .matched
+                        .filter.is_some()
                     {
                         hits += 1;
                     }

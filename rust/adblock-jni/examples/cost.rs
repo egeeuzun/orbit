@@ -58,12 +58,12 @@ fn main() {
     for path in &entries {
         let text = std::fs::read_to_string(path).expect("liste okunamadı");
         total_bytes += text.len();
-        set.add_filter_list(&text, ParseOptions::default());
+        set.add_filter_list(text.clone(), ParseOptions::default());
     }
     println!("liste sayısı = {}, toplam metin = {:.1} MB", entries.len(), total_bytes as f64 / 1e6);
 
     let t = Instant::now();
-    let engine = Engine::from_filter_set(set, true);
+    let engine = Engine::new_with_filter_set(set);
     println!("motor derleme = {:?}\n", t.elapsed());
 
     // Gerçek bir sayfada görülen istek karışımını temsil eden örnekler.
@@ -85,7 +85,7 @@ fn main() {
     let mut sink = 0usize;
     for i in 0..ITERS {
         let (url, ty) = samples[(i as usize) % samples.len()];
-        if let Ok(r) = Request::new(url, source, ty) {
+        if let Ok(r) = Request::new(url, source, ty, "get") {
             sink += r.hostname.len();
         }
     }
@@ -99,7 +99,7 @@ fn main() {
         let (url, ty) = samples[(i as usize) % samples.len()];
         let host = hostname_of(url);
         let third_party = host != src_host;
-        let r = Request::preparsed(url, host, src_host, ty, third_party);
+        let r = Request::preparsed(url, host, src_host, ty, third_party, "get");
         sink += r.hostname.len();
     }
     let pre_ns = t.elapsed().as_nanos() as f64 / ITERS as f64;
@@ -107,12 +107,12 @@ fn main() {
     // --- 3. Asıl eşleştirme ---
     let reqs: Vec<Request> = samples
         .iter()
-        .map(|(url, ty)| Request::new(url, source, ty).unwrap())
+        .map(|(url, ty)| Request::new(url, source, ty, "get").unwrap())
         .collect();
     let t = Instant::now();
     for i in 0..ITERS {
         let r = &reqs[(i as usize) % reqs.len()];
-        if engine.check_network_request(r).matched {
+        if engine.check_network_request(r).filter.is_some() {
             sink += 1;
         }
     }

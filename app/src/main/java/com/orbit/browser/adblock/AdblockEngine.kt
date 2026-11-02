@@ -20,13 +20,15 @@ class AdblockEngine private constructor(@Volatile private var handle: Long) {
     /**
      * @return [NativeAdblock] bit maskesi; motor yoksa 0.
      */
-    fun match(url: String, sourceUrl: String, requestType: String): Int = lock.read {
+    fun match(url: String, sourceUrl: String, requestType: String, method: String): Int = lock.read {
         val h = handle
-        if (h == 0L) 0 else NativeAdblock.nativeMatch(h, url, sourceUrl, requestType)
+        if (h == 0L) 0 else NativeAdblock.nativeMatch(h, url, sourceUrl, requestType, method)
     }
 
-    fun blocks(url: String, sourceUrl: String, requestType: String): Boolean {
-        val r = match(url, sourceUrl, requestType)
+    /** `$important` kuralı istisnaları geçersiz kılar (motorun `should_block` mantığı). */
+    fun blocks(url: String, sourceUrl: String, requestType: String, method: String = "GET"): Boolean {
+        val r = match(url, sourceUrl, requestType, method)
+        if (r and NativeAdblock.IMPORTANT != 0) return true
         return r and NativeAdblock.MATCHED != 0 && r and NativeAdblock.EXCEPTION == 0
     }
 

@@ -39,16 +39,16 @@ fn main() {
         .collect();
     paths.sort();
     for p in &paths {
-        set.add_filter_list(&std::fs::read_to_string(p).unwrap(), ParseOptions::default());
+        set.add_filter_list(std::fs::read_to_string(p).unwrap(), ParseOptions::default());
     }
-    let engine = Engine::from_filter_set(set, true);
+    let engine = Engine::new_with_filter_set(set);
 
     let mut blocked = 0;
     println!("reklam kaynakları:");
     for p in ADS {
         let url = format!("http://127.0.0.1:8099{p}");
-        let r = Request::new(&url, SOURCE, kind(p)).unwrap();
-        let m = engine.check_network_request(&r).matched;
+        let r = Request::new(&url, SOURCE, kind(p), "get").unwrap();
+        let m = engine.check_network_request(&r).filter.is_some();
         if m {
             blocked += 1;
         }
@@ -60,8 +60,8 @@ fn main() {
     println!("\nmasum kaynaklar (engellenmemeli):");
     for p in ["/s/style0.css", "/j/app0.js", "/i/img0_0.gif", "/i/img39_14.gif"] {
         let url = format!("http://127.0.0.1:8099{p}");
-        let r = Request::new(&url, SOURCE, kind(p)).unwrap();
-        let m = engine.check_network_request(&r).matched;
+        let r = Request::new(&url, SOURCE, kind(p), "get").unwrap();
+        let m = engine.check_network_request(&r).filter.is_some();
         if m {
             leaked += 1;
         }

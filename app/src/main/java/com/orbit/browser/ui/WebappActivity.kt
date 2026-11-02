@@ -129,7 +129,8 @@ class WebappActivity : ComponentActivity(), OrbitWebViewClient.Callbacks, OrbitC
     }
 
     override fun onDestroy() {
-        if (::web.isInitialized) web.destroy()
+        // Ortak yol: ses gözcüsü kaydı ve JS köprüsü de görünümle birlikte bırakılır.
+        if (::web.isInitialized) WebViewFactory.destroy(web)
         super.onDestroy()
     }
 
@@ -186,6 +187,8 @@ class WebappActivity : ComponentActivity(), OrbitWebViewClient.Callbacks, OrbitC
     }
 
     override fun onCreateNewTab(): Tab? = null
+    override fun onNewTabReady(tab: Tab) = Unit
+    override fun onCloseTab(tab: Tab) = Unit
 
     override fun onShowCustomView(view: View, callback: WebChromeClient.CustomViewCallback) {
         if (customView != null) {

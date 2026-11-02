@@ -398,6 +398,7 @@ class MainActivity : AppCompatActivity(),
         if (level >= TRIM_MEMORY_COMPLETE || level == TRIM_MEMORY_RUNNING_CRITICAL) {
             adblock.decisions.clear()
         }
+        if (level >= TRIM_MEMORY_RUNNING_LOW) adblock.releaseFreeMemory()
     }
 
     // ---------------------------------------------------------------------- arayüz
@@ -1135,6 +1136,29 @@ class MainActivity : AppCompatActivity(),
         val newTab = tabs.newWebTab()
         if (newTab != null) refreshChromeNow()
         return newTab
+    }
+
+    override fun onNewTabReady(tab: Tab) {
+        // `sendToTarget` açılır pencereyi açana bağlayan mesajı ana kuyruğa
+        // koydu. Seçim o mesajdan sonra çalışsın diye o da kuyruğa girer:
+        // önce seçilseydi canlı sekme sınırı açanı hemen uyutur, açılır
+        // pencere de içeriğini alamadan boş kalırdı.
+        binding.webContainer.post {
+            if (isFinishing || tab !in tabs.tabs) return@post
+            hideKeyboard()
+            hideSuggestions()
+            tabs.select(tab)
+            refreshChromeNow()
+        }
+    }
+
+    override fun onCloseTab(tab: Tab) {
+        // Kendi geri çağrısının içindeki WebView'i yok etmemek için bir tur sonra.
+        binding.webContainer.post {
+            if (isFinishing || tab !in tabs.tabs) return@post
+            tabs.close(tab)
+            refreshChromeNow()
+        }
     }
 
     override fun onShowCustomView(view: View, callback: WebChromeClient.CustomViewCallback) {

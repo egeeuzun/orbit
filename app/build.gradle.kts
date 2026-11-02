@@ -13,8 +13,8 @@ android {
         applicationId = "com.orbit.browser"
         minSdk = 21
         targetSdk = 36
-        versionCode = 2500
-        versionName = "2.5"
+        versionCode = 2600
+        versionName = "2.6"
         vectorDrawables.useSupportLibrary = true
     }
 

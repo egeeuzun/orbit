@@ -30,6 +30,17 @@ class Prefs(context: Context) {
                 putBoolean(KEY_LISTS_MIGRATED_V2, true)
             }
         }
+        // 2.5'in yukarıdaki göçü AdGuard Base ve Tracking'i herkese ekledi;
+        // ikisi motor derlemesini 1 GB'lık cihazda OOM'a sürüklüyordu (bkz.
+        // FilterLists). Bir kez geri alınır — 2.5'ten önce bu listeler
+        // katalogda yoktu, yani etkin olmaları neredeyse her zaman göçten.
+        // İsteyen Ayarlar'dan yeniden açabilir.
+        if (!sp.getBoolean(KEY_LISTS_MIGRATED_V3, false)) {
+            sp.edit {
+                putStringSet(KEY_LISTS, enabledLists - FilterLists.withdrawnDefaults)
+                putBoolean(KEY_LISTS_MIGRATED_V3, true)
+            }
+        }
         // Старые турбо-исключения → пер-сайт профили (cv/anim выключены,
         // как раньше делало исключение); иначе дефолт — chatgpt.com.
         if (!sp.getBoolean(KEY_SITE_OVERRIDES_V2, false)) {
@@ -143,6 +154,15 @@ class Prefs(context: Context) {
     var engineStamp: String
         get() = sp.getString(KEY_STAMP, "")!!
         set(v) = sp.edit { putString(KEY_STAMP, v) }
+
+    /**
+     * Başlayıp bitmeyen motor derlemesinin girdi damgası. Derleme süreci
+     * öldürürse (OOM) açılışta aynı girdiyle yeniden denenmesin diye
+     * derlemeden önce **eşzamanlı** yazılır, bitince silinir.
+     */
+    var pendingBuildStamp: String
+        get() = sp.getString(KEY_PENDING_BUILD, "")!!
+        set(v) = sp.edit(commit = true) { putString(KEY_PENDING_BUILD, v) }
 
     var blockedCount: Long
         get() = sp.getLong(KEY_BLOCKED, 0L)
@@ -413,10 +433,12 @@ class Prefs(context: Context) {
         private const val KEY_GENERIC_COSMETIC = "generic_cosmetic"
         private const val KEY_LISTS = "lists"
         private const val KEY_LISTS_MIGRATED_V2 = "lists_migrated_v2"
+        private const val KEY_LISTS_MIGRATED_V3 = "lists_migrated_v3"
         private const val KEY_CUSTOM_RULES = "custom_rules"
         private const val KEY_CUSTOM_URLS = "custom_urls"
         private const val KEY_LAST_UPDATE = "last_update"
         private const val KEY_STAMP = "engine_stamp"
+        private const val KEY_PENDING_BUILD = "engine_pending_build"
         private const val KEY_BLOCKED = "blocked_count"
         private const val KEY_ALLOWLIST = "allowlist"
         private const val KEY_THEME = "theme"

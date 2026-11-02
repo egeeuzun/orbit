@@ -25,6 +25,12 @@ class OrbitChromeClient(
         fun onIcon(tab: Tab, icon: Bitmap?)
         fun onNewWindow(url: String?): Boolean
         fun onCreateNewTab(): Tab?
+
+        /** Açılır pencere WebView'i açana bağlandıktan sonra çağrılır; sekme artık seçilebilir. */
+        fun onNewTabReady(tab: Tab)
+
+        /** Sayfa betiği kendi açtığı pencereyi `window.close()` ile kapattı. */
+        fun onCloseTab(tab: Tab)
         fun onShowCustomView(view: View, callback: CustomViewCallback)
         fun onHideCustomView()
         fun onFileChooser(callback: ValueCallback<Array<Uri>>, params: FileChooserParams): Boolean
@@ -65,9 +71,14 @@ class OrbitChromeClient(
             val transport = resultMsg.obj as? WebView.WebViewTransport ?: return false
             transport.webView = web
             resultMsg.sendToTarget()
+            host.onNewTabReady(newTab)
             return true
         }
         return false
+    }
+
+    override fun onCloseWindow(window: WebView) {
+        host.onCloseTab(tab)
     }
 
     override fun onShowCustomView(view: View, callback: CustomViewCallback) {

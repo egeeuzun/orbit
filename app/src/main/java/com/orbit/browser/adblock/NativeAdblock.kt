@@ -31,7 +31,14 @@ internal object NativeAdblock {
     external fun nativeSerialize(handle: Long): ByteArray?
     external fun nativeFree(handle: Long)
 
-    external fun nativeMatch(handle: Long, url: String, sourceUrl: String, requestType: String): Int
+    /** [method] HTTP yöntemi ("GET", "POST"…); `$method=` kuralları buna bakar. */
+    external fun nativeMatch(
+        handle: Long,
+        url: String,
+        sourceUrl: String,
+        requestType: String,
+        method: String
+    ): Int
 
     external fun nativeCosmetic(handle: Long, url: String): Array<String>?
     external fun nativeClassIdCss(
@@ -42,6 +49,9 @@ internal object NativeAdblock {
     ): Array<String>?
 
     external fun nativeLoadResources(handle: Long, json: String): Boolean
+
+    /** Yerel ayırıcının tuttuğu boş sayfaları sisteme iade eder (`mallopt(M_PURGE)`). */
+    external fun nativeReleaseFreeMemory()
 
     /**
      * Filtre metnindeki saf `||host^` kurallarının sıralı 64 bit özet

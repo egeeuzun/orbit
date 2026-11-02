@@ -146,15 +146,16 @@ class OrbitWebViewClient(
         // Aynı sayfa aynı adresi çoğu kez birden fazla ister; tekrarlar
         // motora hiç gitmez.
         val cache = adblock.decisions
-        val cached = cache.get(url, pageUrl, type)
+        val method = request.method ?: "GET"
+        val cached = cache.get(url, pageUrl, type, method)
         val blocked = if (cached != null) {
             cached
         } else {
             // `blocks` motor yoksa da güvenli biçimde false döner; ayrıca
             // `isValid` sorgusu yapmak kilidi istek başına ikinci kez almak
             // demekti.
-            adblock.engine.blocks(url, pageUrl, type).also {
-                cache.put(url, pageUrl, type, it)
+            adblock.engine.blocks(url, pageUrl, type, method).also {
+                cache.put(url, pageUrl, type, method, it)
             }
         }
 

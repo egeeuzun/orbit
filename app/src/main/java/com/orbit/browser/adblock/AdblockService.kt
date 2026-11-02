@@ -137,6 +137,7 @@ class AdblockService private constructor(context: Context) {
                                 "toplam ${tDone - t0} ms"
                         )
                         install(cached)
+                        releaseFreeMemory()
                         publish(State.READY)
                         // Motor önbellekten geldiğinde yeniden derleme yolu
                         // hiç çalışmaz; hızlı yol tablosu yoksa (sürüm
@@ -146,6 +147,17 @@ class AdblockService private constructor(context: Context) {
                         return@execute
                     }
                     Log.w(TAG, "Önbellek okunamadı, listeler yeniden derleniyor")
+                }
+                // Aynı girdiyle başlayan son derleme bitmeden süreç öldü
+                // (çoğunlukla OOM). Açılışta yeniden denemek her açılışta
+                // aynı çöküş demekti. Hızlı yol tablosu yine engeller; liste
+                // seçimi ya da içeriği değişince (damga değişir) ya da
+                // kullanıcı elle güncelleyince derleme yeniden denenir.
+                if (prefs.pendingBuildStamp == stamp) {
+                    Log.w(TAG, "Önceki derleme tamamlanmadı; otomatik yeniden deneme atlandı")
+                    buildHosts(readRules().first)
+                    publish(State.FAILED)
+                    return@execute
                 }
                 if (!rebuildFromDisk(stamp)) {
                     // Hiç liste yok: ilk çalıştırma. İndirip derle.
@@ -250,39 +262,63 @@ class AdblockService private constructor(context: Context) {
         // engelleme çalışsın.
         buildHosts(text)
 
-        val built = AdblockEngine.fromRules(text)
-        if (built == null) {
-            publish(State.FAILED)
-            return false
-        }
+        // Süreç derleme sırasında ölürse işaret kalır; [start] onu görüp
+        // aynı girdiyle yeniden denemez. Süreç yaşadığı sürece (istisna
+        // dahil) işaret kaldırılır.
+        prefs.pendingBuildStamp = stamp
+        try {
+            val built = AdblockEngine.fromRules(text)
+            if (built == null) {
+                publish(State.FAILED)
+                return false
+            }
 
-        // Serileştirme kurulumdan ÖNCE yapılmalı: [install] tutamacın sahipliğini
-        // çalışan motora devreder ve [built] geçersiz hale gelir.
-        val snapshot = try {
-            built.serialize()
-        } catch (t: Throwable) {
-            Log.w(TAG, "Motor serileştirilemedi: ${t.message}")
-            null
-        }
-
-        install(built)
-
-        // Derlenmiş motoru sakla: sonraki açılış saniyeler yerine milisaniye sürer.
-        // Yazamazsak damga temizlenir; aksi halde açılışta bayat önbellek
-        // güncel sanılıp yüklenirdi.
-        if (snapshot != null) {
-            try {
-                engineFile.writeBytes(snapshot)
-                prefs.engineStamp = stamp
+            // Serileştirme kurulumdan ÖNCE yapılmalı: [install] tutamacın sahipliğini
+            // çalışan motora devreder ve [built] geçersiz hale gelir.
+            val snapshot = try {
+                built.serialize()
             } catch (t: Throwable) {
-                Log.w(TAG, "Motor önbelleğe yazılamadı: ${t.message}")
+                Log.w(TAG, "Motor serileştirilemedi: ${t.message}")
+                null
+            }
+
+            install(built)
+
+            // Derlenmiş motoru sakla: sonraki açılış saniyeler yerine milisaniye sürer.
+            // Yazamazsak damga temizlenir; aksi halde açılışta bayat önbellek
+            // güncel sanılıp yüklenirdi.
+            if (snapshot != null) {
+                try {
+                    engineFile.writeBytes(snapshot)
+                    prefs.engineStamp = stamp
+                } catch (t: Throwable) {
+                    Log.w(TAG, "Motor önbelleğe yazılamadı: ${t.message}")
+                    prefs.engineStamp = ""
+                }
+            } else {
                 prefs.engineStamp = ""
             }
-        } else {
-            prefs.engineStamp = ""
+            publish(State.READY)
+            return used > 0
+        } finally {
+            prefs.pendingBuildStamp = ""
+            // Derlemenin geçici yapıları ve (varsa) eski motor serbest
+            // bırakıldı; ayırıcı o sayfaları kendiliğinden geri vermiyor.
+            releaseFreeMemory()
         }
-        publish(State.READY)
-        return used > 0
+    }
+
+    /**
+     * Yerel ayırıcının elindeki boş sayfaları sisteme iade eder. Derleme ve
+     * önbellekten kurulum sonrasında, bir de sistem bellek istediğinde çağrılır.
+     */
+    fun releaseFreeMemory() {
+        if (!NativeAdblock.available) return
+        try {
+            NativeAdblock.nativeReleaseFreeMemory()
+        } catch (_: Throwable) {
+            // Eski .so: sembol yok, iade atlanır.
+        }
     }
 
     /**
@@ -452,8 +488,11 @@ class AdblockService private constructor(context: Context) {
                 }, name).apply { isDaemon = true }
             }
 
-        /** Serileştirme biçimi değişirse artırılır; eski önbellekleri geçersiz kılar. */
-        private const val ENGINE_FORMAT = "v1"
+        /**
+         * Serileştirme biçimi değişirse artırılır; eski önbellekleri geçersiz kılar.
+         * v2: adblock 0.13 (FlatBuffers); 0.10'un `engine.bin`'i okunamaz.
+         */
+        private const val ENGINE_FORMAT = "v2"
 
         private const val BUNDLED_LIST = "default_filters.txt"
         private const val UPDATE_INTERVAL_MS = 3L * 24 * 60 * 60 * 1000

@@ -23,12 +23,16 @@ class DecisionCache(capacityPow2: Int = 512) {
         val url: String,
         val source: String,
         val type: String,
+        val method: String,
         val blocked: Boolean
     )
 
     /** @return karar, ya da önbellekte yoksa `null`. */
-    fun get(url: String, source: String, type: String): Boolean? {
+    fun get(url: String, source: String, type: String, method: String): Boolean? {
         val e = slots.get(index(url, source, type)) ?: return null
+        // Yöntem dizine katılmaz: hemen her istek GET, aynı adresin farklı
+        // yöntemleri yuvayı paylaşır ve burada ayrışır.
+        if (e.method != method) return null
         // Aynı sayfada `source` genellikle aynı String nesnesidir; karşılaştırma
         // referans denetiminde biter.
         if (e.type !== type && e.type != type) return null
@@ -37,8 +41,8 @@ class DecisionCache(capacityPow2: Int = 512) {
         return e.blocked
     }
 
-    fun put(url: String, source: String, type: String, blocked: Boolean) {
-        slots.set(index(url, source, type), Entry(url, source, type, blocked))
+    fun put(url: String, source: String, type: String, method: String, blocked: Boolean) {
+        slots.set(index(url, source, type), Entry(url, source, type, method, blocked))
     }
 
     /** Motor değiştiğinde veya engelleme kapatılıp açıldığında çağrılır. */

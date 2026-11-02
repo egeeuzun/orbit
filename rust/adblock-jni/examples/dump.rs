@@ -21,8 +21,8 @@ fn main() {
                  example.com#@#.banner-ad\n";
 
     let mut set = FilterSet::new(true);
-    set.add_filter_list(rules, ParseOptions::default());
-    let mut engine = Engine::from_filter_set(set, true);
+    set.add_filter_list(rules.to_string(), ParseOptions::default());
+    let mut engine = Engine::new_with_filter_set(set);
 
     if let Some(path) = std::env::args().nth(1) {
         let text = std::fs::read_to_string(&path).expect("resources.json okunamadı");
@@ -57,8 +57,8 @@ fn main() {
         ("https://cdn.example.com/banner/top.gif", "https://example.com/", "image"),
         ("https://example.com/app.js", "https://example.com/", "script"),
     ] {
-        let req = Request::new(url, src, ty).unwrap();
+        let req = Request::new(url, src, ty, "get").unwrap();
         let r = engine.check_network_request(&req);
-        println!("{:<45} matched={}", url, r.matched);
+        println!("{:<45} matched={}", url, r.filter.is_some());
     }
 }

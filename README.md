@@ -15,32 +15,18 @@ Designed to run smoothly on devices with 1 GB RAM and fully compatible with newe
 
 ---
 
-## 🆕 What's new in 2.5
+## 🆕 What's new in 2.6
 
-- **Background audio** — radio and video keep playing when you leave Orbit. A small
-  notification with Play / Pause / Stop keeps the process alive, and lock-screen and
-  headset buttons work through a `MediaSession`. It only appears when a page is really
-  playing audible sound.
-- **Editable start page** — the Most Visited grid is yours: add your own shortcuts,
-  edit or remove them, and remove ones that came from history without touching your
-  history. Tiles now show each site's favicon.
-- **Tablets, foldables and landscape** — the address bar can sit at the top or the
-  bottom (Settings → Appearance), the shortcut grid widens to 6 or 8 columns, touch
-  targets grow on wide screens, and bottom sheets open fully expanded.
-- **Print page** — print or save the current page as a PDF from the menu, through the
-  system print dialog.
-- **30 filter lists** — the catalog doubled with AdGuard Base, Tracking, Mobile,
-  Annoyances and Social, plus per-language lists for German, French,
-  Spanish/Portuguese, Japanese, Dutch, Italian, Chinese, Polish, Indonesian and Korean.
-- **Old Samsung devices** — the About screen no longer crashes on Android 6, legacy PNG
-  launcher icons were added for API < 26, and new tabs no longer show the previous
-  tab's URL.
-- **Dark theme fixes** — sheets, dialogs and the About screen were painted stock
-  Material black instead of Orbit's navy, and pages that do not paint their own
-  background rendered black text on a dark base. Both are fixed.
-- **Performance** — address bar suggestions are debounced and no longer queue behind
-  the network, history writes use SQLite WAL, favicons are saved off the main thread,
-  and the request path parses each URL once.
+- **No more out-of-memory crashes** — 2.5's default filter lists pushed the engine
+  compile past 1 GB on low-memory devices and crashed on every launch. The two heaviest
+  lists (AdGuard Base and Tracking) are opt-in again, an interrupted compile is no
+  longer retried in a loop, and memory freed after a compile goes back to the system.
+- **Newer, lighter engine** — Brave `adblock-rust` 0.13.5: the compile needs about half
+  the memory, the loaded engine is about half the size, and the cache reloads almost
+  instantly. `$method` and `$important` rules now behave as in uBlock Origin.
+- **Cosmetic filtering works** — a syntax error had kept element hiding off on every page.
+- **Pop-ups** — `window.open` no longer crashes the browser; pop-ups open in front and
+  sign-in pop-ups can report back to the page that opened them.
 
 Full changelog, in Russian and English: [CHANGES.md](CHANGES.md) —
 [releases](https://github.com/egeeuzun/orbit/releases).

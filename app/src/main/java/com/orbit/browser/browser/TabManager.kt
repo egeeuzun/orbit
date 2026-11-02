@@ -48,17 +48,35 @@ class TabManager(
         return tab
     }
 
-    /** Закрытая вкладка с готовым WebView — для WebChromeClient transport
-     *  (window.open): без WebView transport вернул бы false, и WebView ушёл бы
-     *  в пустой таб. WebView создаётся сразу, чтобы перехваты сработали. */
+    /**
+     * `window.open` için hazır WebView'li sekme: transport'a canlı bir görünüm
+     * verilmezse açılan pencere boş bir sekmeye düşer. WebView bu yüzden
+     * hemen kurulur.
+     *
+     * Eskiden bu sekme [liveOrder]'a hiç girmiyordu: ne [Prefs.liveTabLimit]
+     * ne de [trimMemory] ona ulaşabiliyordu. Her açılır pencere, sekme elle
+     * kapatılana kadar kendi oluşturucusuyla arka planda canlı kalıyor ve
+     * süreç belleği OOM'a kadar büyüyordu. Artık listenin en sonuna (ilk
+     * uyutulacak yere) eklenir.
+     *
+     * Burada seçilmez ve sınır uygulanmaz: açan WebView, transport mesajı
+     * işlenene kadar canlı kalmalı, yoksa açılır pencere içeriğini alamaz.
+     * Seçimi o mesajdan sonra çağıran yapar.
+     */
     fun newWebTab(): Tab? {
         val tab = Tab(nextId++, current?.incognito == true)
-        _tabs.add(tab)
         try {
-            wake(tab)
+            // Hiçbir şey yüklenmez: Chromium daha önce gezinmiş bir WebView'i
+            // açılır pencere olarak reddedip uygulamayı çökertiyor
+            // ("New WebView for popup window must not have been previously
+            // navigated"). İçeriği açan sayfa verecek.
+            wake(tab, load = false)
         } catch (_: Throwable) {
             return null
         }
+        tab.opener = current
+        _tabs.add(tab)
+        liveOrder.add(tab)
         return tab
     }
 
@@ -93,13 +111,16 @@ class TabManager(
         if (index < 0) return
         _tabs.remove(tab)
         liveOrder.remove(tab)
+        for (t in _tabs) if (t.opener === tab) t.opener = null
 
         // Önce geçerli sekmeyi değiştir, sonra WebView'i yok et: WebView
         // yok edildiğinde odak başka bir görünüme taşınır ve odak
         // dinleyicileri (adres çubuğu dahil) o anda eski sekmeyi okumasın.
         if (current === tab) {
             current = null
-            val next = _tabs.getOrNull(index) ?: _tabs.lastOrNull()
+            // Kapanan bir açılır pencereyse onu açan sekmeye dönülür.
+            val next = tab.opener?.takeIf { it in _tabs }
+                ?: _tabs.getOrNull(index) ?: _tabs.lastOrNull()
             if (next != null) select(next) else newTab(prefs.homePage, false)
         }
 
@@ -109,6 +130,7 @@ class TabManager(
         }
         release(tab)
         tab.savedState = null
+        tab.opener = null
     }
 
     fun closeAll() {
@@ -130,7 +152,7 @@ class TabManager(
         (web.parent as? ViewGroup)?.removeView(web)
     }
 
-    private fun wake(tab: Tab): WebView {
+    private fun wake(tab: Tab, load: Boolean = true): WebView {
         tab.webView?.let { return it }
 
         // Köprü sekmeye özel: genel kozmetik CSS'i eşzamansız hesaplanıp
@@ -150,7 +172,7 @@ class TabManager(
 
         val state = tab.savedState
         val restored = state != null && web.restoreState(state) != null
-        if (!restored) {
+        if (!restored && load) {
             val url = tab.pendingUrl ?: tab.pageUrl.takeIf { it.isNotEmpty() } ?: prefs.homePage
             // Başlangıç ekranı yerel bir görünüm; WebView boş belge tutar.
             web.loadUrl(if (url == Prefs.HOME_URL) BLANK else url, extraHeaders())
@@ -170,9 +192,15 @@ class TabManager(
         liveOrder.remove(tab)
         liveOrder.add(0, tab)
         val limit = prefs.liveTabLimit.coerceAtLeast(1)
+        // Önde bir açılır pencere varsa açanı da canlı kalır: sınır en
+        // fazla bir WebView aşılır.
+        val opener = current?.opener
         while (liveOrder.size > limit) {
-            val victim = liveOrder.removeAt(liveOrder.size - 1)
-            if (victim !== current) hibernate(victim)
+            // Korunan sekmeler uyutulamaz ama listeden de düşmemeli: düşerse
+            // canlı WebView'leri bir daha ne sınıra ne [trimMemory]'ye takılır.
+            val victim = liveOrder.lastOrNull { it !== current && it !== opener } ?: break
+            liveOrder.remove(victim)
+            hibernate(victim)
         }
     }
 

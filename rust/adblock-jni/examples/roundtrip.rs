@@ -22,25 +22,21 @@ fn main() {
 
     let t = Instant::now();
     let mut set = FilterSet::new(false);
-    set.add_filter_list(&text, ParseOptions::default());
-    let engine = Engine::from_filter_set(set, true);
+    set.add_filter_list(text.clone(), ParseOptions::default());
+    let engine = Engine::new_with_filter_set(set);
     println!("derleme: {:?}", t.elapsed());
 
     let t = Instant::now();
-    match engine.serialize() {
-        Ok(bytes) => {
-            println!("serialize: {:?}, {} bayt", t.elapsed(), bytes.len());
-            let t = Instant::now();
-            let mut back = Engine::new(true);
-            match back.deserialize(&bytes) {
-                Ok(_) => {
-                    println!("deserialize: {:?}", t.elapsed());
-                    check(&back, "geri yüklenen");
-                }
-                Err(e) => println!("DESERIALIZE HATASI: {:?}", e),
-            }
+    let bytes = engine.serialize();
+    println!("serialize: {:?}, {} bayt", t.elapsed(), bytes.len());
+    let t = Instant::now();
+    let mut back = Engine::default();
+    match back.deserialize(&bytes) {
+        Ok(_) => {
+            println!("deserialize: {:?}", t.elapsed());
+            check(&back, "geri yüklenen");
         }
-        Err(e) => println!("SERIALIZE HATASI: {:?}", e),
+        Err(e) => println!("DESERIALIZE HATASI: {:?}", e),
     }
 
     check(&engine, "taze");
@@ -55,8 +51,8 @@ fn check(engine: &Engine, label: &str) {
     ];
     print!("[{}] ", label);
     for (url, ty, expect) in cases {
-        let req = Request::new(url, "https://haber.example.com/", ty).unwrap();
-        let got = engine.check_network_request(&req).matched;
+        let req = Request::new(url, "https://haber.example.com/", ty, "get").unwrap();
+        let got = engine.check_network_request(&req).filter.is_some();
         print!("{}{} ", if got == expect { "OK " } else { "HATA " }, short(url));
     }
     let cos = engine.url_cosmetic_resources("https://haber.example.com/");

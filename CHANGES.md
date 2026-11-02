@@ -1,5 +1,46 @@
 # История изменений / Changelog
 
+## 2.6 — 2 November 2026
+
+Version bumped from 2.5 to 2.6 (version code 2600).
+
+### Out-of-memory crashes fixed
+- **The browser no longer climbs past 1 GB and gets killed.** 2.5 turned on
+  AdGuard Base and AdGuard Tracking Protection by default (and its settings
+  migration added them for existing users). Compiling the resulting 14-list
+  set needed ~450 MB of native memory on top of the browser, which pushed
+  1 GB devices into the low-memory killer. The compile never finished, so
+  the next launch tried again and crashed again.
+- Both lists are **off by default** again and are removed once from existing
+  installs. They largely duplicate EasyList and EasyPrivacy; you can turn
+  them back on in Settings.
+- **No more crash loops.** If the process dies while compiling filter lists,
+  the next launch skips the compile and keeps the fast host-based blocking.
+  Changing the list selection or updating manually retries it.
+- Memory freed after a compile is now returned to the system. Before, about
+  260 MB stayed held by the allocator for the life of the process.
+
+### Ad blocking engine
+- **Brave `adblock-rust` 0.10.4 → 0.13.5.** Rules are stored in a single
+  FlatBuffer: with the default lists the compile needs about half the
+  memory (108 → 55 MB), the loaded engine is smaller (32 → 17 MB), the
+  cache file is smaller (14.4 → 11.6 MB), and reloading it is nearly
+  instant. The old cache is rebuilt once after updating.
+- `$method=` rules now match: the request's HTTP method is passed to the
+  engine.
+- `$important` rules now win over exceptions, as in uBlock Origin.
+- **Cosmetic filtering works.** A syntax error in the content script had kept
+  element hiding off on every page since the first release.
+- Fixed a native crash the cosmetic filter would have caused on Android 7
+  and older (JNI local reference table overflow on pages with many classes).
+
+### Pop-ups
+- **`window.open` no longer crashes the browser.** The pop-up's WebView was
+  given a blank page before Chromium attached it, which WebView rejects.
+- Pop-ups open in front, count toward the live-tab limit, keep their opener
+  alive so sign-in pop-ups can report back, and close themselves with
+  `window.close()`.
+
 ## 2.5 — 7 September 2026
 
 Version bumped from 2.0.0 to 2.5 (version code 2500).

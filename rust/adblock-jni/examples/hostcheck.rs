@@ -58,8 +58,8 @@ fn main() {
     names.dedup();
 
     let mut set = FilterSet::new(true);
-    set.add_filter_list(&text, ParseOptions::default());
-    let engine = Engine::from_filter_set(set, true);
+    set.add_filter_list(text.clone(), ParseOptions::default());
+    let engine = Engine::new_with_filter_set(set);
 
     let types = ["script", "image", "xmlhttprequest", "sub_frame"];
     let mut checked = 0usize;
@@ -77,12 +77,12 @@ fn main() {
             // kuralları burada düşer, yani motorun en hoşgörülü hali.
             let url = format!("https://{name}/a");
             let source = format!("https://{name}/");
-            let Ok(req) = Request::new(&url, &source, ty) else {
+            let Ok(req) = Request::new(&url, &source, ty, "get") else {
                 continue;
             };
             checked += 1;
             let r = engine.check_network_request(&req);
-            let engine_blocks = r.matched && r.exception.is_none();
+            let engine_blocks = r.should_block();
             if !engine_blocks {
                 disagree += 1;
                 if examples.len() < 15 {
