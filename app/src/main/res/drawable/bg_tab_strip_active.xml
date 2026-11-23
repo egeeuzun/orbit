@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Tablet sekme şeridinde seçili sekme: alt kenarı düz, adres çubuğuyla
+     aynı renkte olduğu için çubukla tek parça görünür (Samsung Internet /
+     masaüstü tarayıcı düzeni). -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="?attr/colorSurfaceContainer" />
+    <corners
+        android:topLeftRadius="12dp"
+        android:topRightRadius="12dp"
+        android:bottomLeftRadius="0dp"
+        android:bottomRightRadius="0dp" />
+</shape>

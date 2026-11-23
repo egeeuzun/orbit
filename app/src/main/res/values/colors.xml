@@ -19,22 +19,25 @@
     <color name="m3_surface_dim_light">#E2E8F0</color>
     <color name="m3_surface_bright_light">#FFFFFF</color>
 
-    <!-- Material 3 Palette Dark -->
+    <!-- Material 3 Palette Dark — tam siyah zemin, nötr gri katmanlar.
+         Eskiden slate/lacivert tonlarıydı (#0F172A, #1E293B…); zemin artık
+         saf siyah (AMOLED'de piksel kapalı), katmanlar yükseldikçe açılan
+         renksiz griler. Yalnızca vurgu rengi (primary) mavi kalır. -->
     <color name="m3_primary_dark">#60A5FA</color>
-    <color name="m3_on_primary_dark">#1E3A8A</color>
-    <color name="m3_primary_container_dark">#1E293B</color>
-    <color name="m3_on_primary_container_dark">#DBEAFE</color>
-    <color name="m3_surface_dark">#0F172A</color>
-    <color name="m3_surface_container_dark">#1E293B</color>
-    <color name="m3_surface_container_high_dark">#334155</color>
-    <color name="m3_on_surface_dark">#F8FAFC</color>
-    <color name="m3_on_surface_variant_dark">#94A3B8</color>
-    <color name="m3_surface_container_lowest_dark">#0A0F1C</color>
-    <color name="m3_surface_container_low_dark">#172236</color>
-    <color name="m3_surface_container_highest_dark">#475569</color>
-    <color name="m3_surface_variant_dark">#1E293B</color>
-    <color name="m3_surface_dim_dark">#0B1220</color>
-    <color name="m3_surface_bright_dark">#334155</color>
+    <color name="m3_on_primary_dark">#000000</color>
+    <color name="m3_primary_container_dark">#262626</color>
+    <color name="m3_on_primary_container_dark">#F2F2F2</color>
+    <color name="m3_surface_dark">#000000</color>
+    <color name="m3_surface_container_dark">#1A1A1A</color>
+    <color name="m3_surface_container_high_dark">#262626</color>
+    <color name="m3_on_surface_dark">#F2F2F2</color>
+    <color name="m3_on_surface_variant_dark">#A3A3A3</color>
+    <color name="m3_surface_container_lowest_dark">#000000</color>
+    <color name="m3_surface_container_low_dark">#0F0F0F</color>
+    <color name="m3_surface_container_highest_dark">#333333</color>
+    <color name="m3_surface_variant_dark">#1F1F1F</color>
+    <color name="m3_surface_dim_dark">#0A0A0A</color>
+    <color name="m3_surface_bright_dark">#2E2E2E</color>
 
     <!-- Etkin palet. Temalar yalnızca bu adları kullanır; gece sürümü
          `values-night/colors.xml` içinde. Palet tek yerde durduğu için ana

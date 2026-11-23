@@ -40,6 +40,7 @@ class SettingsActivity : AppCompatActivity() {
         setSupportActionBar(binding.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         binding.toolbar.setNavigationOnClickListener { finish() }
+        binding.settingsContainer.limitContentWidth()
 
         build()
     }
@@ -62,7 +63,7 @@ class SettingsActivity : AppCompatActivity() {
             getString(R.string.pref_search_suggestions_sum),
             prefs.searchSuggestions
         ) { prefs.searchSuggestions = it }
-        action(getString(R.string.home_page), prefs.homePage) { editHomePage() }
+        action(getString(R.string.home_page), homePageSummary()) { editHomePage() }
         switch(
             getString(R.string.pref_restore_tabs),
             getString(R.string.pref_restore_tabs_sum),
@@ -267,16 +268,26 @@ class SettingsActivity : AppCompatActivity() {
             .show()
     }
 
+    /** Başlangıç ekranının iç adresi (`orbit://home`) kullanıcıya gösterilmez. */
+    private fun homePageSummary(): String =
+        if (prefs.homePage == Prefs.HOME_URL) getString(R.string.home_start_screen) else prefs.homePage
+
     private fun editHomePage() {
         val input = EditText(this).apply {
-            setText(prefs.homePage)
+            // Başlangıç ekranı seçiliyken alan boş açılır; ipucu ne anlama
+            // geldiğini söyler. Boş kaydetmek başlangıç ekranına döner
+            // (eskiden boş adres kaydediliyordu).
+            setText(if (prefs.homePage == Prefs.HOME_URL) "" else prefs.homePage)
+            hint = getString(R.string.home_page_hint)
             setSingleLine()
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or
+                android.text.InputType.TYPE_TEXT_VARIATION_URI
         }
         AlertDialog.Builder(this)
             .setTitle(R.string.home_page)
             .setView(pad(input))
             .setPositiveButton(R.string.save) { _, _ ->
-                prefs.homePage = input.text.toString().trim()
+                prefs.homePage = input.text.toString().trim().ifEmpty { Prefs.HOME_URL }
                 build()
             }
             .setNegativeButton(R.string.cancel, null)

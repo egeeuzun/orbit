@@ -37,7 +37,9 @@ import com.orbit.browser.adblock.AdblockService
 import com.orbit.browser.browser.OrbitChromeClient
 import com.orbit.browser.browser.DownloadHelper
 import com.orbit.browser.browser.FaviconStore
+import com.orbit.browser.browser.IncognitoProfiles
 import com.orbit.browser.browser.OrbitWebViewClient
+import com.orbit.browser.browser.PageTranslator
 import com.orbit.browser.browser.Tab
 import com.orbit.browser.browser.TabManager
 import com.orbit.browser.browser.WebViewFactory
@@ -45,6 +47,7 @@ import com.orbit.browser.data.BrowserDb
 import com.orbit.browser.data.BrowsingData
 import com.orbit.browser.data.Prefs
 import com.orbit.browser.databinding.ActivityMainBinding
+import com.orbit.browser.databinding.ActivityMainTopBinding
 import com.orbit.browser.media.MediaKeepAliveService
 import com.orbit.browser.media.MediaPlaybackTracker
 import com.orbit.browser.util.UrlUtils
@@ -59,6 +62,9 @@ class MainActivity : AppCompatActivity(),
     private lateinit var db: BrowserDb
     private lateinit var tabs: TabManager
     private lateinit var suggestions: EntryAdapter
+
+    /** Tablet sekme şeridi; telefonda ve alt çubuklu düzende null kalır. */
+    private var tabStrip: TabStrip? = null
 
     /**
      * Sayfa yükleniyor mu. Eskiden ilerleme çubuğunun görünürlüğünden
@@ -199,6 +205,7 @@ class MainActivity : AppCompatActivity(),
 
         setupUrlBar()
         setupNavBar()
+        setupTabStrip()
         setupHome()
         setupBackHandling()
 
@@ -222,6 +229,11 @@ class MainActivity : AppCompatActivity(),
      * kurmadan yalnızca sağlayıcıyı ayağa kaldırır — pahalı olan kısım budur.
      */
     private fun warmUpWebView() {
+        // Önceki çalıştırmalardan kalan gizli profiller, bu süreçte henüz
+        // yüklenmemişken silinir (yüklendikten sonra silinemiyorlar).
+        binding.root.postDelayed({
+            if (!isFinishing) IncognitoProfiles.purgeStale()
+        }, WARM_UP_DELAY_MS)
         binding.root.postDelayed({
             if (isFinishing || tabs.current?.isLive == true) return@postDelayed
             try {
@@ -320,6 +332,9 @@ class MainActivity : AppCompatActivity(),
         foreground = false
         if (!isFinishing && MediaPlaybackTracker.isAudioPlaying(this)) {
             startMediaService()
+        } else if (!isFinishing && !isChangingConfigurations) {
+            // Ses yoksa arka plandaki sayfanın çalışmasına gerek yok.
+            tabs.pauseForBackground()
         }
     }
 
@@ -328,6 +343,7 @@ class MainActivity : AppCompatActivity(),
         foreground = true
         // Uygulama ön plana dönünce keepalive gereksiz — bildirim susar.
         MediaKeepAliveService.stop(this)
+        if (::tabs.isInitialized) tabs.resumeFromBackground()
     }
 
     override fun onDestroy() {
@@ -391,8 +407,12 @@ class MainActivity : AppCompatActivity(),
 
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
-        // Sistem bellek istediğinde arka plan sekmeleri hemen uyutulur.
-        if (level >= TRIM_MEMORY_RUNNING_LOW) tabs.trimMemory()
+        // Sistem bellek istediğinde arka plan sekmeleri hemen uyutulur;
+        // kritik baskıda uyuyanların geçmiş paketleri de atılır.
+        val critical = level >= TRIM_MEMORY_COMPLETE || level == TRIM_MEMORY_RUNNING_CRITICAL
+        if (level >= TRIM_MEMORY_RUNNING_LOW) tabs.trimMemory(critical)
+        // Favicon önbelleği (1–4 MB) diskten yeniden doldurulabilir.
+        if (level >= TRIM_MEMORY_RUNNING_LOW) FaviconStore.trimMemory()
         // Süreç öldürülmenin eşiğindeyse istek kararı önbelleği de bırakılır;
         // içerik sonraki sayfada zaten yeniden dolar.
         if (level >= TRIM_MEMORY_COMPLETE || level == TRIM_MEMORY_RUNNING_CRITICAL) {
@@ -461,7 +481,13 @@ class MainActivity : AppCompatActivity(),
         }
 
         binding.reloadButton.setOnClickListener {
-            val web = tabs.current?.webView ?: return@setOnClickListener
+            val web = tabs.current?.webView
+            if (web == null) {
+                // Oluşturucusu ölmüş ve otomatik yeniden yüklenmemiş sekme.
+                tabs.current?.let { tabs.select(it) }
+                refreshChromeNow()
+                return@setOnClickListener
+            }
             // Yüklenirken düğme durdur işlevi görür; asılı kalan yüklemeler
             // böylece iptal edilebilir.
             if (isLoading) {
@@ -493,6 +519,54 @@ class MainActivity : AppCompatActivity(),
         binding.navHome.setOnClickListener { load(Prefs.HOME_URL) }
         binding.navTabs.setOnClickListener { showTabs() }
         binding.navMenu.setOnClickListener { showMenu() }
+    }
+
+    /**
+     * Tablette (kısa kenar >= 600dp, adres çubuğu üstte) Samsung Internet
+     * gibi adres çubuğunun üstünde sekme şeridi gösterilir. Sekmeler
+     * düğmesi yerinde kalır: çok sekmede tam liste ve gizli sekme oradan.
+     */
+    private fun setupTabStrip() {
+        if (!urlBarOnTop ||
+            resources.configuration.smallestScreenWidthDp < Prefs.TABLET_SW_THRESHOLD_DP
+        ) return
+        val top = ActivityMainTopBinding.bind(binding.root)
+        top.tabStrip.visibility = View.VISIBLE
+        // Gölge çubuk yerine şerit + çubuk bloğunun altına düşer; yoksa
+        // çubuğun üst gölgesi seçili sekmeyle çubuk arasına çizgi çeker.
+        val density = resources.displayMetrics.density
+        binding.bottomBar.elevation = 0f
+        binding.bottomContainer.outlineProvider = android.view.ViewOutlineProvider.BOUNDS
+        binding.bottomContainer.elevation = 4 * density
+
+        tabStrip = TabStrip(
+            strip = top.tabStrip,
+            list = top.tabStripList,
+            newButton = top.tabStripNew,
+            onSelect = { tab ->
+                hideKeyboard()
+                hideSuggestions()
+                tabs.select(tab)
+                refreshChromeNow()
+            },
+            onClose = { tab ->
+                tabs.close(tab)
+                refreshChromeNow()
+            }
+        )
+        top.tabStripNew.setOnClickListener { openNewTab(incognito = false) }
+        top.tabStripNew.setOnLongClickListener {
+            openNewTab(incognito = true)
+            toast(getString(R.string.incognito_tab))
+            true
+        }
+    }
+
+    private fun openNewTab(incognito: Boolean) {
+        hideKeyboard()
+        hideSuggestions()
+        tabs.newTab(Prefs.HOME_URL, incognito)
+        refreshChromeNow()
     }
 
     private fun setupHome() {
@@ -641,6 +715,8 @@ class MainActivity : AppCompatActivity(),
             binding.tabCount.text = countStr
         }
 
+        tabStrip?.update(tabs.tabs, tab)
+
         val reloadVis = if (home) View.GONE else View.VISIBLE
         if (binding.reloadButton.visibility != reloadVis) {
             binding.reloadButton.visibility = reloadVis
@@ -768,7 +844,7 @@ class MainActivity : AppCompatActivity(),
             MenuSheet.Item(ID_EXIT, R.drawable.ic_exit, getString(R.string.exit))
         )
 
-        MenuSheet(this).show(items) { id ->
+        val onPick: (Int) -> Unit = { id ->
             when (id) {
                 ID_SHIELD -> showShieldDialog()
                 ID_NEW_TAB -> { hideKeyboard(); hideSuggestions(); tabs.newTab(Prefs.HOME_URL); refreshChromeNow() }
@@ -777,7 +853,11 @@ class MainActivity : AppCompatActivity(),
                     hideSuggestions()
                     tabs.newTab(Prefs.HOME_URL, incognito = true)
                     refreshChromeNow()
-                    toast(getString(R.string.incognito_tab) + "\n" + getString(R.string.incognito_cookies_note))
+                    // Ayrı profil yoksa (eski WebView) çerezler hâlâ ortaktır.
+                    toast(
+                        if (IncognitoProfiles.supported) getString(R.string.incognito_tab)
+                        else getString(R.string.incognito_tab) + "\n" + getString(R.string.incognito_cookies_note)
+                    )
                 }
                 ID_BOOKMARK -> {
                     if (bookmarked) {
@@ -804,6 +884,9 @@ class MainActivity : AppCompatActivity(),
                 ID_EXIT -> finish()
             }
         }
+        // Adres çubuğu üstteyse menü ⋮ düğmesinin altında açılır.
+        val menu = MenuSheet(this)
+        if (urlBarOnTop) menu.showAsDropdown(binding.navMenu, items, onPick) else menu.show(items, onPick)
     }
 
     private fun showTranslateSheet() {
@@ -811,9 +894,21 @@ class MainActivity : AppCompatActivity(),
         val url = tab.displayUrl()
         if (url.isEmpty() || tab.isHome) return
 
-        TranslateSheet(this, url) { translateUrl ->
-            load(translateUrl)
-        }.show()
+        val translator = PageTranslator.of(tab.webView)
+        TranslateSheet(
+            context = this,
+            currentUrl = url,
+            translated = translator?.isActive == true,
+            onTranslate = { source, target ->
+                if (translator != null) {
+                    translator.start(this, source, target)
+                } else {
+                    toast(getString(R.string.translate_unavailable))
+                }
+            },
+            onOpenInGoogle = { translateUrl -> load(translateUrl) },
+            onRestore = { translator?.restore() }
+        ).show()
     }
 
     /**
@@ -1020,8 +1115,8 @@ class MainActivity : AppCompatActivity(),
     private fun showTabs() {
         TabsSheet(
             context = this,
-            tabs = tabs.tabs,
-            current = tabs.current,
+            tabs = { tabs.tabs },
+            current = { tabs.current },
             onSelect = { tab ->
                 hideKeyboard()
                 hideSuggestions()
@@ -1048,7 +1143,8 @@ class MainActivity : AppCompatActivity(),
     // ------------------------------------------------- WebViewClient geri çağrıları
 
     override fun onPageUrlChanged(tab: Tab, url: String) {
-        if (tab !== tabs.current) return
+        // Şerit arka plandaki sekmelerin adresini de gösterir.
+        if (tab !== tabs.current && tabStrip == null) return
         runOnUiThread { refreshChrome() }
     }
 
@@ -1072,6 +1168,50 @@ class MainActivity : AppCompatActivity(),
     }
 
     override fun onExternalIntent(uri: Uri): Boolean = openExternally(uri)
+
+    override fun onMainFrameSslError(tab: Tab, url: String) {
+        if (tab !== tabs.current) return
+        isLoading = false
+        refreshChrome()
+        Toast.makeText(
+            this,
+            getString(R.string.ssl_error, UrlUtils.host(url)) +
+                if (android.os.Build.VERSION.SDK_INT < 25) "\n" + getString(R.string.ssl_error_old_android) else "",
+            Toast.LENGTH_LONG
+        ).show()
+    }
+
+    /** Aynı sekmenin oluşturucusu art arda ölürse sayfa döngüye girmesin diye. */
+    private var lastRendererGoneTab = -1L
+    private var lastRendererGoneAt = 0L
+
+    override fun onRendererGone(tab: Tab, view: android.webkit.WebView) {
+        // Tüm WebView'ler aynı oluşturucuyu paylaşır; her biri için ayrı geri
+        // çağrı gelir. Geçerli olmayanlar seçilince yeniden yüklenir.
+        val wasCurrent = tabs.onRendererGone(tab)
+        if (!wasCurrent) {
+            refreshChrome()
+            return
+        }
+        isLoading = false
+        val now = android.os.SystemClock.elapsedRealtime()
+        val looping = tab.id == lastRendererGoneTab && now - lastRendererGoneAt < RENDERER_RETRY_WINDOW_MS
+        lastRendererGoneTab = tab.id
+        lastRendererGoneAt = now
+        if (looping) {
+            // İkinci kez kısa sürede öldü: sayfa boş kalır, yenile düğmesi
+            // yeniden dener.
+            toast(getString(R.string.page_crashed))
+        } else {
+            binding.webContainer.post {
+                if (isFinishing || tab !== tabs.current) return@post
+                tabs.select(tab)
+                refreshChromeNow()
+            }
+            toast(getString(R.string.page_crashed_reloaded))
+        }
+        refreshChromeNow()
+    }
 
     private fun openExternally(uri: Uri): Boolean {
         val scheme = uri.scheme?.lowercase() ?: return true
@@ -1104,13 +1244,14 @@ class MainActivity : AppCompatActivity(),
     }
 
     override fun onTitle(tab: Tab, title: String) {
-        if (tab === tabs.current) refreshChrome()
+        if (tab === tabs.current || tabStrip != null) refreshChrome()
     }
 
     override fun onIcon(tab: Tab, icon: Bitmap?) {
         if (icon == null) return
         val host = UrlUtils.host(tab.pageUrl)
         if (host.isNotEmpty()) FaviconStore.save(this, host, icon)
+        tabStrip?.onIcon(tab, icon)
     }
 
     override fun onNewWindow(url: String?): Boolean {
@@ -1255,6 +1396,9 @@ class MainActivity : AppCompatActivity(),
     private companion object {
         /** İlk kare çizildikten sonra WebView sağlayıcısının önden yüklenmesi. */
         const val WARM_UP_DELAY_MS = 400L
+
+        /** Bu süre içinde aynı sekmenin oluşturucusu yine ölürse otomatik yeniden yükleme yapılmaz. */
+        const val RENDERER_RETRY_WINDOW_MS = 10_000L
 
         /** Adres çubuğu önerileri için yazma duraksaması. */
         const val SUGGEST_DEBOUNCE_MS = 150L

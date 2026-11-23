@@ -55,16 +55,17 @@ class AdblockEngine private constructor(@Volatile private var handle: Long) {
         NativeAdblock.nativeClassIdCss(h, classes, ids, exceptions)?.firstOrNull() ?: ""
     }
 
-    fun serialize(): ByteArray? = lock.read {
+    /** Motoru doğrudan dosyaya serileştirir; bayt dizisi Java yığınına girmez. */
+    fun serializeTo(file: java.io.File): Boolean = lock.read {
         val h = handle
-        if (h == 0L) null else NativeAdblock.nativeSerialize(h)
+        h != 0L && NativeAdblock.nativeSerializeToFile(h, file.absolutePath)
     }
 
     /**
      * Yeni derlenmiş motoru devreye alır ve eskisini serbest bırakır.
      *
      * [other] tutamacını devralır; çağrıdan sonra [other] geçersizdir. Bu
-     * yüzden [serialize] gibi işlemler swap'tan önce yapılmalıdır.
+     * yüzden [serializeTo] gibi işlemler swap'tan önce yapılmalıdır.
      */
     fun swap(other: AdblockEngine) {
         val incoming = other.detach()
@@ -108,15 +109,15 @@ class AdblockEngine private constructor(@Volatile private var handle: Long) {
         /** Motorsuz (her şeye izin veren) örnek. */
         fun empty() = AdblockEngine(0L)
 
-        fun fromRules(rules: String): AdblockEngine? {
+        fun fromFiles(paths: Array<String>, extra: String): AdblockEngine? {
             if (!NativeAdblock.available) return null
-            val h = NativeAdblock.nativeNew(rules, true)
+            val h = NativeAdblock.nativeNewFromFiles(paths, extra, true)
             return if (h == 0L) null else AdblockEngine(h)
         }
 
-        fun fromCache(data: ByteArray): AdblockEngine? {
+        fun fromCacheFile(file: java.io.File): AdblockEngine? {
             if (!NativeAdblock.available) return null
-            val h = NativeAdblock.nativeFromCache(data)
+            val h = NativeAdblock.nativeFromCacheFile(file.absolutePath)
             return if (h == 0L) null else AdblockEngine(h)
         }
     }

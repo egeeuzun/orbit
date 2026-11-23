@@ -15,7 +15,7 @@ use adblock::request::Request;
 use adblock::Engine;
 
 use jni::objects::{JClass, JObjectArray, JString};
-use jni::sys::{jboolean, jbyteArray, jint, jlong, jobjectArray, JNI_FALSE, JNI_TRUE};
+use jni::sys::{jboolean, jint, jlong, jobjectArray, JNI_FALSE, JNI_TRUE};
 use jni::JNIEnv;
 
 /// `check_network_request` sonucunun bit maskesi (Kotlin tarafıyla ortak).
@@ -103,19 +103,100 @@ fn string_array<'l>(env: &mut JNIEnv<'l>, items: &[String]) -> jobjectArray {
 }
 
 // ---------------------------------------------------------------- yaşam döngüsü
+//
+// Liste metni ve motor önbelleği Java yığınına hiç girmez: Kotlin yalnızca
+// dosya yollarını verir, okuma ve yazma burada yapılır. Eskiden 8 MB'lık
+// liste metni `readText` kopyaları, büyüyen bir `StringBuilder` ve
+// `toString()` ile Java yığınında birkaç kez çoğalıyor (SM-G530FZ'de derleme
+// sırasında Java yığını 6 → 68 MB), ardından JNI sınırında bir kez daha
+// kopyalanıyordu; 12 MB'lık `engine.bin` de her soğuk açılışta önce Java
+// `byte[]`'ına okunuyordu.
 
-/// Filtre listesi metninden yeni bir motor derler.
+/// Java `String[]` dosya yollarını okur.
+fn paths_of(env: &mut JNIEnv, paths: &JObjectArray) -> Vec<String> {
+    let len = env.get_array_length(paths).unwrap_or(0);
+    let mut out = Vec::with_capacity(len as usize);
+    for i in 0..len {
+        if let Ok(obj) = env.get_object_array_element(paths, i) {
+            let js = JString::from(obj);
+            out.push(jstr(env, &js));
+        }
+    }
+    out
+}
+
+/// Dosyayı metin olarak okur. Geçersiz UTF-8 (bozuk liste) Kotlin'in
+/// `readText`'i gibi yerine koyma karakteriyle okunur; geçerliyse kopya yok.
+fn read_text(path: &str) -> Option<String> {
+    let bytes = std::fs::read(path).ok()?;
+    Some(match String::from_utf8(bytes) {
+        Ok(s) => s,
+        Err(e) => String::from_utf8_lossy(e.as_bytes()).into_owned(),
+    })
+}
+
+/// Önce geçici dosyaya yazıp yerine taşır: yazma yarıda kesilirse eski
+/// dosya bozulmaz. Yerine taşıma (yeni dosya düğümü) eşlenmiş eski önbelleği
+/// kullanan motorun altındaki baytları da değiştirmez.
+fn write_atomic(path: &str, parts: &[&[u8]]) -> bool {
+    use std::io::Write;
+    let tmp = format!("{path}.tmp");
+    let written = std::fs::File::create(&tmp)
+        .and_then(|mut f| {
+            for p in parts {
+                f.write_all(p)?;
+            }
+            f.sync_data()
+        })
+        .is_ok();
+    written && std::fs::rename(&tmp, path).is_ok()
+}
+
+/// `engine.bin` başındaki dolgu. adblock'un başlığı 29 bayt; 3 bayt dolguyla
+/// FlatBuffer verisi dosyanın 32. baytında, yani sayfa hizalı eşlemede 8
+/// bayt hizalı bir adreste başlar ve kopyalanmadan kullanılabilir.
+const CACHE_PAD: [u8; 3] = [0; 3];
+
+/// Eşlenmiş önbellek dosyası; motor yaşadığı sürece eşleme açık kalır.
+struct MappedCache {
+    map: memmap2::Mmap,
+}
+
+impl AsRef<[u8]> for MappedCache {
+    fn as_ref(&self) -> &[u8] {
+        &self.map[CACHE_PAD.len()..]
+    }
+}
+
+extern "C" {
+    fn madvise(addr: *mut std::ffi::c_void, len: usize, advice: i32) -> i32;
+}
+const MADV_RANDOM: i32 = 1;
+const MADV_DONTNEED: i32 = 4;
+
+/// Listelerden yeni bir motor derler. Her liste ayrı eklenir; dosyalar tek
+/// bir metinde birleştirilmez, bellekte aynı anda yalnızca bir listenin
+/// metni durur.
 #[no_mangle]
-pub extern "system" fn Java_com_orbit_browser_adblock_NativeAdblock_nativeNew(
+pub extern "system" fn Java_com_orbit_browser_adblock_NativeAdblock_nativeNewFromFiles(
     mut env: JNIEnv,
     _class: JClass,
-    rules: JString,
+    paths: JObjectArray,
+    extra: JString,
     optimize: jboolean,
 ) -> jlong {
-    let text = jstr(&mut env, &rules);
+    let paths = paths_of(&mut env, &paths);
+    let extra = jstr(&mut env, &extra);
     let mut set = FilterSet::new(false);
-    // 0.13'ten beri metin sahiplenilir; ayrı bir kopya oluşmaz.
-    set.add_filter_list(text, ParseOptions::default());
+    for p in &paths {
+        if let Some(text) = read_text(p) {
+            // 0.13'ten beri metin sahiplenilir; ayrı bir kopya oluşmaz.
+            set.add_filter_list(text, ParseOptions::default());
+        }
+    }
+    if !extra.is_empty() {
+        set.add_filter_list(extra, ParseOptions::default());
+    }
     let engine = if optimize == JNI_TRUE {
         Engine::new_with_filter_set(set)
     } else {
@@ -126,57 +207,101 @@ pub extern "system" fn Java_com_orbit_browser_adblock_NativeAdblock_nativeNew(
     })
 }
 
-/// Önceden derlenmiş (serileştirilmiş) motoru yükler. Soğuk açılışta
-/// listeleri yeniden ayrıştırmaktan çok daha hızlıdır.
+/// Önceden derlenmiş (serileştirilmiş) motoru dosyadan yükler. Soğuk
+/// açılışta listeleri yeniden ayrıştırmaktan çok daha hızlıdır.
 #[no_mangle]
-pub extern "system" fn Java_com_orbit_browser_adblock_NativeAdblock_nativeFromCache(
-    env: JNIEnv,
+pub extern "system" fn Java_com_orbit_browser_adblock_NativeAdblock_nativeFromCacheFile(
+    mut env: JNIEnv,
     _class: JClass,
-    data: jbyteArray,
+    path: JString,
 ) -> jlong {
-    let arr = unsafe { jni::objects::JByteArray::from_raw(data) };
-    let bytes = match env.convert_byte_array(&arr) {
-        Ok(b) => b,
+    let path = jstr(&mut env, &path);
+    let map = match std::fs::File::open(&path).and_then(|f| unsafe { memmap2::Mmap::map(&f) }) {
+        Ok(m) => m,
         Err(_) => return 0,
     };
+    if map.len() <= CACHE_PAD.len() || map[..CACHE_PAD.len()] != CACHE_PAD {
+        return 0;
+    }
+    let (addr, len) = (map.as_ptr() as *mut std::ffi::c_void, map.len());
+    unsafe {
+        // Eşleştirme rastgele erişir: komşu sayfaların önden okunması
+        // gereksiz yere bellek doldurur.
+        madvise(addr, len, MADV_RANDOM);
+    }
     let mut engine = Engine::default();
-    match engine.deserialize(&bytes) {
-        Ok(_) => into_ptr(Handle {
-            engine: Arc::new(engine),
-        }),
+    match engine.deserialize_external(Box::new(MappedCache { map })) {
+        Ok(in_place) => {
+            if in_place {
+                // Sağlama özeti dosyanın tamamını okuyup her sayfayı belleğe
+                // getirdi. Sayfalar temiz ve dosya yedekli: bırakılır, yalnızca
+                // eşleştirmenin dokunduğu kısım yeniden yüklenir.
+                unsafe {
+                    madvise(addr, len, MADV_DONTNEED);
+                }
+            }
+            into_ptr(Handle {
+                engine: Arc::new(engine),
+            })
+        }
         Err(_) => 0,
     }
 }
 
+/// Motoru serileştirip doğrudan dosyaya yazar.
 #[no_mangle]
-pub extern "system" fn Java_com_orbit_browser_adblock_NativeAdblock_nativeSerialize(
-    env: JNIEnv,
+pub extern "system" fn Java_com_orbit_browser_adblock_NativeAdblock_nativeSerializeToFile(
+    mut env: JNIEnv,
     _class: JClass,
     ptr: jlong,
-) -> jbyteArray {
+    path: JString,
+) -> jboolean {
     let h = match as_handle(ptr) {
         Some(h) => h,
-        None => return std::ptr::null_mut(),
+        None => return JNI_FALSE,
     };
-    match env.byte_array_from_slice(&h.engine.serialize()) {
-        Ok(a) => a.into_raw(),
-        Err(_) => std::ptr::null_mut(),
+    let path = jstr(&mut env, &path);
+    if write_atomic(&path, &[&CACHE_PAD, &h.engine.serialize()]) {
+        JNI_TRUE
+    } else {
+        JNI_FALSE
     }
 }
 
-/// Filtre metninden saf `||host^` kurallarının hızlı yol tablosunu üretir.
-/// Ayrıntı için [`hosts`] modülüne bakın.
+/// Listelerden saf `||host^` kurallarının hızlı yol tablosunu üretip
+/// dosyaya yazar. İstisnalar listeler arası değerlendirildiği için
+/// (bkz. [`hosts::build`]) metin burada tek parça birleştirilir; bu kopya
+/// yalnızca yerel bellekte ve kısa ömürlü.
 #[no_mangle]
-pub extern "system" fn Java_com_orbit_browser_adblock_NativeAdblock_nativeHostsFromRules(
+pub extern "system" fn Java_com_orbit_browser_adblock_NativeAdblock_nativeHostsToFile(
     mut env: JNIEnv,
     _class: JClass,
-    rules: JString,
-) -> jbyteArray {
-    let text = jstr(&mut env, &rules);
+    paths: JObjectArray,
+    extra: JString,
+    out_path: JString,
+) -> jboolean {
+    let paths = paths_of(&mut env, &paths);
+    let extra = jstr(&mut env, &extra);
+    let out_path = jstr(&mut env, &out_path);
+    let size: u64 = paths
+        .iter()
+        .filter_map(|p| std::fs::metadata(p).ok())
+        .map(|m| m.len() + 1)
+        .sum();
+    let mut text = String::with_capacity(size as usize + extra.len() + 1);
+    for p in &paths {
+        if let Some(t) = read_text(p) {
+            text.push_str(&t);
+            text.push('\n');
+        }
+    }
+    text.push_str(&extra);
     let table = hosts::build(&text);
-    match env.byte_array_from_slice(&hosts::to_bytes(&table)) {
-        Ok(a) => a.into_raw(),
-        Err(_) => std::ptr::null_mut(),
+    drop(text);
+    if write_atomic(&out_path, &[&hosts::to_bytes(&table)]) {
+        JNI_TRUE
+    } else {
+        JNI_FALSE
     }
 }
 

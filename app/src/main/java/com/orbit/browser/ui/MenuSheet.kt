@@ -14,7 +14,10 @@ import com.orbit.browser.R
 import com.orbit.browser.databinding.ItemMenuBinding
 
 /**
- * Menü: Google Chrome tarzı dikey açılır sayfa menüsü.
+ * Menü. Adres çubuğu alttayken (telefon) alttan açılan sayfa; üstteyken
+ * (tablet, ya da telefonda üst düzen) ⋮ düğmesinin altında açılan menü —
+ * Samsung Internet ve masaüstü tarayıcılar gibi. Tablette sayfa ekranın
+ * altından açılıyor, ⋮ ise sağ üstte kalıyordu.
  */
 class MenuSheet(private val context: Context) {
 
@@ -63,6 +66,53 @@ class MenuSheet(private val context: Context) {
         dialog.behavior.skipCollapsed = true
         dialog.behavior.state = com.google.android.material.bottomsheet.BottomSheetBehavior.STATE_EXPANDED
         dialog.show()
+    }
+
+    /**
+     * [anchor]'ın altında, sağ kenarına hizalı açılır menü. Pencerenin altına
+     * sığmazsa liste kaydırılır.
+     */
+    fun showAsDropdown(anchor: View, items: List<Item>, onPick: (Int) -> Unit) {
+        val density = context.resources.displayMetrics.density
+        val width = (MENU_WIDTH_DP * density).toInt()
+        val margin = (8 * density).toInt()
+
+        val list = RecyclerView(context).apply {
+            layoutManager = LinearLayoutManager(context)
+            overScrollMode = View.OVER_SCROLL_NEVER
+            setPadding(0, margin, 0, margin)
+            clipToPadding = false
+        }
+        lateinit var popup: android.widget.PopupWindow
+        list.adapter = Adapter(items) { id ->
+            popup.dismiss()
+            onPick(id)
+        }
+        list.measure(
+            View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+        )
+
+        // Düğmenin altından pencerenin görünür altına kadar olan yer.
+        val frame = android.graphics.Rect()
+        anchor.getWindowVisibleDisplayFrame(frame)
+        val loc = IntArray(2)
+        anchor.getLocationOnScreen(loc)
+        val available = frame.bottom - (loc[1] + anchor.height) - margin
+        val height = minOf(list.measuredHeight, available.coerceAtLeast(margin * 12))
+
+        popup = android.widget.PopupWindow(list, width, height, true).apply {
+            // Şekilli zemin hem rengi hem de gölgenin yuvarlak sınırını verir;
+            // zemin olmadan eski API'lerde dışarı dokununca kapanmıyor.
+            setBackgroundDrawable(ContextCompat.getDrawable(context, R.drawable.bg_popup_menu))
+            elevation = 8 * density
+            isOutsideTouchable = true
+        }
+        popup.showAsDropDown(anchor, 0, 0, Gravity.END)
+    }
+
+    private companion object {
+        const val MENU_WIDTH_DP = 280
     }
 
     private class Adapter(

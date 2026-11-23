@@ -201,8 +201,9 @@ class HomeView @JvmOverloads constructor(
         var host: String? = null
     }
 
-    private companion object {
-        /** `item_shortcut.xml` içindeki kutucuk boyu. */
+    companion object {
+        /** `item_shortcut.xml` içindeki kutucuk boyu. Sekme şeridi de favicon
+         *  önbelleğini paylaşmak için aynı boyutu ister. */
         const val ICON_DP = 48
     }
 }

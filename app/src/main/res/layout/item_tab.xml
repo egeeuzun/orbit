@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/tabContainer"
     android:layout_width="match_parent"
     android:layout_height="64dp"
@@ -48,5 +49,5 @@
         android:contentDescription="@string/close_tab"
         android:padding="8dp"
         android:scaleType="fitCenter"
-        android:src="@drawable/ic_close" />
+        app:srcCompat="@drawable/ic_close" />
 </LinearLayout>

@@ -26,9 +26,11 @@ internal object NativeAdblock {
     const val COS_PROCEDURAL = 2
     const val COS_GENERICHIDE = 3
 
-    external fun nativeNew(rules: String, optimize: Boolean): Long
-    external fun nativeFromCache(data: ByteArray): Long
-    external fun nativeSerialize(handle: Long): ByteArray?
+    // Liste metni ve motor önbelleği Java yığınına girmez: yalnızca dosya
+    // yolları geçer, okuma/yazma yerel tarafta yapılır (bkz. lib.rs).
+    external fun nativeNewFromFiles(paths: Array<String>, extra: String, optimize: Boolean): Long
+    external fun nativeFromCacheFile(path: String): Long
+    external fun nativeSerializeToFile(handle: Long, path: String): Boolean
     external fun nativeFree(handle: Long)
 
     /** [method] HTTP yöntemi ("GET", "POST"…); `$method=` kuralları buna bakar. */
@@ -57,5 +59,5 @@ internal object NativeAdblock {
      * Filtre metnindeki saf `||host^` kurallarının sıralı 64 bit özet
      * tablosu (küçük sonlu). Ayrıntı: `rust/adblock-jni/src/hosts.rs`.
      */
-    external fun nativeHostsFromRules(rules: String): ByteArray?
+    external fun nativeHostsToFile(paths: Array<String>, extra: String, outPath: String): Boolean
 }

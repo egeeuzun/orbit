@@ -36,6 +36,16 @@ class OrbitWebViewClient(
         fun onPageFinished(tab: Tab)
         fun onBlockedCountChanged(tab: Tab)
         fun onExternalIntent(uri: Uri): Boolean
+
+        /**
+         * WebView'in oluşturucu süreci öldü (çoğunlukla düşük bellekte
+         * sistem öldürdü). [view] artık kullanılamaz; yalnızca hiyerarşiden
+         * çıkarılıp yok edilmeli.
+         */
+        fun onRendererGone(tab: Tab, view: WebView)
+
+        /** Ana belgenin sertifikası doğrulanamadı; sayfa açılmadı. */
+        fun onMainFrameSslError(tab: Tab, url: String) {}
     }
 
     /** Son kozmetik enjeksiyonun adresi ve hazırlanmış betiği (ana iş parçacığı). */
@@ -163,6 +173,49 @@ class OrbitWebViewClient(
         return blockedFor(request, url, type)
     }
 
+    /**
+     * Android 8+ WebView'in oluşturucusu ayrı süreçte çalışır (SM-G530FZ'de
+     * de: `sandboxed_process`, ~110 MB). 1 GB'lık cihazda düşük bellek
+     * katili onu sık sık öldürür. Bu metot ezilmeden `false` dönerse sistem
+     * uygulamanın kendisini de sonlandırıyordu: sayfa öldüğünde tarayıcı
+     * çöküyordu. Artık sekme yerinde kalır, WebView'i bırakılır.
+     */
+    @android.annotation.TargetApi(26)
+    override fun onRenderProcessGone(
+        view: WebView,
+        detail: android.webkit.RenderProcessGoneDetail
+    ): Boolean {
+        Log.w(
+            TAG,
+            "oluşturucu öldü: çöktü=${detail.didCrash()}, " +
+                "öncelik=${detail.rendererPriorityAtExit()}, ${tab.pageUrl}"
+        )
+        callbacks.onRendererGone(tab, view)
+        return true
+    }
+
+    /**
+     * Sertifika hatasında yükleme iptal edilir (varsayılan davranış). Eskiden
+     * kullanıcıya hiçbir şey söylenmiyor, sayfa sessizce boş kalıyordu. Android
+     * 7'den eski cihazların sertifika deposu Let's Encrypt (ISRG Root X1) gibi
+     * yeni kökleri tanımadığı için bu, o cihazlarda sık görülüyor. Yalnızca
+     * açılmaya çalışılan sayfanın kendisi için bildirilir; alt kaynaklar sessiz.
+     */
+    override fun onReceivedSslError(
+        view: WebView,
+        handler: android.webkit.SslErrorHandler,
+        error: android.net.http.SslError
+    ) {
+        handler.cancel()
+        val url = error.url.orEmpty()
+        val expected = tab.pendingUrl ?: tab.pageUrl
+        if (url.isNotEmpty() && (url == expected || UrlUtils.host(url) == UrlUtils.host(expected) &&
+                UrlUtils.host(url).isNotEmpty() && tab.pageUrl.isEmpty())
+        ) {
+            callbacks.onMainFrameSslError(tab, url)
+        }
+    }
+
     override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
         val uri = request.url
         val scheme = uri.scheme?.lowercase()
@@ -193,6 +246,8 @@ class OrbitWebViewClient(
         tab.blockedOnPage = 0
         // Yeni belge: eski belgenin ses veren çerçeveleri artık yok.
         MediaPlaybackTracker.reset(view)
+        // Çeviri belgeye özel; yeni sayfa çevrilmemiş açılır.
+        PageTranslator.of(view)?.onNewDocument()
         tab.allowlisted = prefs.isAllowlisted(UrlUtils.host(url))
         callbacks.onPageUrlChanged(tab, url)
         callbacks.onPageStarted(tab)

@@ -21,4 +21,12 @@
     <!-- Alt çubuk düğmelerinin dokunma alanı. Tabletlerde büyür. -->
     <dimen name="nav_button_size">40dp</dimen>
     <dimen name="nav_button_padding">9dp</dimen>
+
+    <!-- Tablet sekme şeridi (yalnızca üst adres çubuklu tablet düzeninde
+         görünür). Sekme, şeridin altına yaslanır; üstte kalan boşluk
+         seçili sekmenin yuvarlak köşelerini öne çıkarır. -->
+    <dimen name="tab_strip_height">42dp</dimen>
+    <dimen name="tab_strip_item_height">36dp</dimen>
+    <dimen name="tab_strip_item_min_width">120dp</dimen>
+    <dimen name="tab_strip_item_max_width">240dp</dimen>
 </resources>

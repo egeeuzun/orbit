@@ -61,7 +61,7 @@ class HostBlocklist private constructor(private val table: LongArray) {
         val EMPTY = HostBlocklist(LongArray(0))
 
         /**
-         * `nativeHostsFromRules` çıktısını okur. Bayt dizisi küçük sonlu
+         * `nativeHostsToFile` çıktısını okur. Bayt dizisi küçük sonlu
          * 64 bitlik sıralı özetlerden oluşur.
          */
         fun fromBytes(bytes: ByteArray): HostBlocklist {

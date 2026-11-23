@@ -72,7 +72,7 @@
                     android:contentDescription="@string/home"
                     android:padding="@dimen/nav_button_padding"
                     android:scaleType="fitCenter"
-                    android:src="@drawable/ic_home"
+                    app:srcCompat="@drawable/ic_home"
                     app:tint="?attr/colorOnSurface" />
 
                 <!-- Omnibox -->
@@ -107,7 +107,7 @@
                     android:contentDescription="@string/reload"
                     android:padding="@dimen/nav_button_padding"
                     android:scaleType="fitCenter"
-                    android:src="@drawable/ic_refresh"
+                    app:srcCompat="@drawable/ic_refresh"
                     app:tint="?attr/colorOnSurface" />
 
                 <!-- Tab switcher -->
@@ -123,7 +123,7 @@
                         android:contentDescription="@string/tabs"
                         android:padding="@dimen/nav_button_padding"
                         android:scaleType="fitCenter"
-                        android:src="@drawable/ic_tabs"
+                        app:srcCompat="@drawable/ic_tabs"
                         app:tint="?attr/colorOnSurface" />
 
                     <TextView
@@ -147,7 +147,7 @@
                     android:contentDescription="@string/menu"
                     android:padding="@dimen/nav_button_padding"
                     android:scaleType="fitCenter"
-                    android:src="@drawable/ic_more"
+                    app:srcCompat="@drawable/ic_more"
                     app:tint="?attr/colorOnSurface" />
             </LinearLayout>
         </LinearLayout>

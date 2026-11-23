@@ -124,13 +124,21 @@ class TabManager(
             if (next != null) select(next) else newTab(prefs.homePage, false)
         }
 
+        val lastIncognito = tab.incognito && _tabs.none { it.incognito }
         tab.webView?.let {
             (it.parent as? ViewGroup)?.removeView(it)
+            // Gizli profilin HTTP önbelleği profil başına tutulur ve
+            // `LOAD_NO_CACHE`e rağmen yazılıyor; çerez/depolama gibi oturum
+            // bitince silinsin. Profilin son WebView'i üzerinden temizlenir.
+            if (lastIncognito) it.clearCache(true)
             WebViewFactory.destroy(it)
         }
         release(tab)
         tab.savedState = null
         tab.opener = null
+        // Son gizli sekme de kapandı: gizli oturumun verisi silinir, sonraki
+        // gizli sekme boş bir profille başlar.
+        if (lastIncognito) IncognitoProfiles.endSession()
     }
 
     fun closeAll() {
@@ -142,6 +150,7 @@ class TabManager(
         _tabs.clear()
         liveOrder.clear()
         current = null
+        IncognitoProfiles.endSession()
     }
 
     /** Sekmeyi görünümden ayırır ama listede tutar. */
@@ -221,15 +230,79 @@ class TabManager(
         tab.webView = null
     }
 
-    /** Sistem bellek baskısı bildirdiğinde geçerli sekme dışındaki her şey uyur. */
-    fun trimMemory() {
+    /**
+     * Sistem bellek baskısı bildirdiğinde geçerli sekme dışındaki her şey uyur.
+     *
+     * [critical] ise uyuyan sekmelerin geri/ileri geçmişi (WebView durum
+     * paketi) de atılır; sekme yalnızca adresini korur ve seçildiğinde o
+     * adresi yeniden yükler. Sekme sayısında üst sınır yok; her biri birkaç
+     * yüz KB'lık paket tutabildiği için kritik baskıda bu Java yığını da
+     * geri verilir.
+     */
+    fun trimMemory(critical: Boolean = false) {
         for (tab in ArrayList(liveOrder)) {
             if (tab !== current) {
                 liveOrder.remove(tab)
                 hibernate(tab)
             }
         }
+        if (critical) {
+            for (tab in _tabs) {
+                if (tab === current || tab.webView != null || tab.savedState == null) continue
+                tab.savedState = null
+                if (!tab.isHome && tab.pendingUrl == null) {
+                    tab.pendingUrl = tab.pageUrl.takeIf { it.isNotEmpty() }
+                }
+            }
+        }
     }
+
+    /**
+     * Sekmenin oluşturucusu öldü: WebView'i bırakılır, sekme listede kalır ve
+     * adresini korur. Seçildiğinde (ya da geçerli sekmeyse hemen, çağıran
+     * [select] ile) yeni bir WebView'de yeniden yüklenir. Ölü süreçten durum
+     * paketi alınamadığı için geri/ileri geçmişi kaybolur.
+     *
+     * @return sekme geçerli sekmeyse true
+     */
+    fun onRendererGone(tab: Tab): Boolean {
+        val web = tab.webView ?: return false
+        liveOrder.remove(tab)
+        release(tab)
+        WebViewFactory.destroyDead(web)
+        tab.savedState = null
+        if (!tab.isHome && tab.pendingUrl == null) {
+            tab.pendingUrl = tab.pageUrl.takeIf { it.isNotEmpty() }
+        }
+        return tab === current
+    }
+
+    /**
+     * Uygulama arka plana geçti ve ses çalmıyor: geçerli sayfa ve tüm
+     * zamanlayıcılar duraklatılır. Böylece arka planda betik, animasyon ve
+     * ağ yoklamaları CPU ile pil harcamaz. Ses çalarken çağrılmaz (bkz. [onPause]).
+     */
+    fun pauseForBackground() {
+        val web = current?.webView ?: return
+        web.onPause()
+        web.pauseTimers()
+        pausedInBackground = true
+    }
+
+    /**
+     * Ön plana dönüldü. `pauseTimers` süreç genelidir: yalnızca bu sınıfın
+     * duraklatmasını değil, web uygulaması penceresinin (`WebappActivity`)
+     * kendi `onPause`'unda yaptığı duraklatmayı da geri alır. O pencereden
+     * dönünce sekmenin zamanlayıcıları donuk kalıyordu.
+     */
+    fun resumeFromBackground() {
+        val web = current?.webView
+        if (pausedInBackground) web?.onResume()
+        pausedInBackground = false
+        web?.resumeTimers()
+    }
+
+    private var pausedInBackground = false
 
     fun extraHeaders(): Map<String, String> =
         if (prefs.doNotTrack) mapOf("DNT" to "1", "Sec-GPC" to "1") else emptyMap()

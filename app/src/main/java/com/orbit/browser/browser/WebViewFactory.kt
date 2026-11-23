@@ -60,6 +60,9 @@ object WebViewFactory {
     @SuppressLint("SetJavaScriptEnabled", "AddJavascriptInterface")
     fun create(context: Context, prefs: Prefs, bridge: CosmeticBridge, incognito: Boolean): OrbitWebView {
         val web = OrbitWebView(context)
+        // Profil, WebView'e başka hiçbir şey yapılmadan önce bağlanmalı.
+        val incognitoCookies = if (incognito) IncognitoProfiles.attach(web) else null
+        val isolated = incognitoCookies != null
         web.layoutParams = ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT
@@ -88,8 +91,11 @@ object WebViewFactory {
         s.saveFormData = false
         s.cacheMode = if (incognito) WebSettings.LOAD_NO_CACHE else WebSettings.LOAD_DEFAULT
 
-        // Gizli sekmede disk yazımı olmasın.
-        if (incognito) {
+        // Ayrı profil yoksa (eski WebView) gizli sekmenin localStorage'ı
+        // normal sekmelerle ortak olurdu; en azından o kapatılır. Ayrı
+        // profilde depolama oturumla birlikte silindiği için açık kalır ve
+        // siteler bozulmaz.
+        if (incognito && !isolated) {
             s.domStorageEnabled = false
         }
 
@@ -99,11 +105,13 @@ object WebViewFactory {
         applyPerfRuntime(context, web, prefs)
 
         web.addJavascriptInterface(bridge, "OrbitCosmetic")
+        // Sayfa içi çeviri köprüsü; kullanıcı çeviriyi başlatmadıkça hiçbir isteği kabul etmez.
+        PageTranslator.attach(web)
         // Arka planda süreci canlı tutan bildirim yalnızca gerçekten ses
         // çalınırken çıksın diye sayfanın oynatma durumu izlenir.
         MediaPlaybackTracker.attach(web)
 
-        CookieManager.getInstance().apply {
+        (incognitoCookies ?: CookieManager.getInstance()).apply {
             setAcceptCookie(true)
             setAcceptThirdPartyCookies(web, !prefs.blockThirdPartyCookies)
         }
@@ -341,10 +349,22 @@ object WebViewFactory {
      * değiştirmede boşa giden onlarca milisaniye. `destroy()` zaten sesi
      * durdurup oluşturucuyu kapatıyor.
      */
+    /**
+     * Oluşturucusu ölmüş görünümü bırakır. Belgeye göre böyle bir WebView'de
+     * hiyerarşiden çıkarma ve `destroy` dışında hiçbir şey çağrılmamalı.
+     */
+    fun destroyDead(web: WebView) {
+        PageTranslator.of(web)?.onNewDocument()
+        MediaPlaybackTracker.detach(web)
+        (web.parent as? ViewGroup)?.removeView(web)
+        web.destroy()
+    }
+
     fun destroy(web: WebView) {
         web.stopLoading()
         web.onPause()
         web.removeJavascriptInterface("OrbitCosmetic")
+        PageTranslator.detach(web)
         MediaPlaybackTracker.detach(web)
         (web.parent as? ViewGroup)?.removeView(web)
         web.destroy()

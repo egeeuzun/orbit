@@ -106,6 +106,11 @@ object FaviconStore {
     private val missing: MutableSet<String> =
         java.util.Collections.newSetFromMap(java.util.concurrent.ConcurrentHashMap())
 
+    /** Bellek baskısında çözülmüş ikonlar bırakılır; gerekirse diskten yeniden okunur. */
+    fun trimMemory() {
+        cache.evictAll()
+    }
+
     /** Önbellekteki ikon; yoksa null. Ana iş parçacığından ucuzdur. */
     fun cached(host: String): Bitmap? = cache.get(host)
 

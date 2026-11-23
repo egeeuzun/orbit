@@ -37,7 +37,7 @@
                 android:layout_width="26dp"
                 android:layout_height="26dp"
                 android:layout_gravity="center"
-                android:src="@drawable/ic_shield"
+                app:srcCompat="@drawable/ic_shield"
                 app:tint="#2563EB" />
         </FrameLayout>
 

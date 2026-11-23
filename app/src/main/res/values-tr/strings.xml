@@ -70,6 +70,8 @@
     <string name="search_engine">Arama motoru</string>
     <string name="pref_search_suggestions">Arama önerileri</string>
     <string name="pref_search_suggestions_sum">Yazarken seçili arama motorundan çevrimiçi öneriler göster</string>
+    <string name="home_start_screen">Başlangıç ekranı</string>
+    <string name="home_page_hint">Başlangıç ekranı için boş bırakın</string>
     <string name="home_page">Ana sayfa</string>
     <string name="pref_adblock">Reklam ve izleyici engelleme</string>
     <string name="pref_adblock_sum">Brave adblock motoru, uBlock Origin filtre listeleri</string>
@@ -131,7 +133,7 @@
     <string name="about_feature1_title">🛡 Brave adblock-rust Motoru &amp; uBO Listeleri</string>
     <string name="about_feature1_desc">JNI ile gömülü yüksek hızlı engelleme motoru uBlock Origin temel, badware, privacy, EasyList ve AdGuard Türkçe listeleriyle çalışır.</string>
     <string name="about_feature2_title">⚡ Saf Host Hızlı Yolu</string>
-    <string name="about_feature2_desc">Kuralların %%73.7\'si 64-bit FNV-1a sıralı dizi üzerinde ikili aramayla 0 JNI maliyetiyle saniyeler içinde işlenir.</string>
+    <string name="about_feature2_desc" formatted="false">Kuralların %73.7\'si 64-bit FNV-1a sıralı dizi üzerinde ikili aramayla 0 JNI maliyetiyle saniyeler içinde işlenir.</string>
     <string name="about_feature3_title">🪶 1 GB RAM Düşük Bellek Mimarisi</string>
     <string name="about_feature3_desc">Tek canlı WebView politikası, serileştirilmiş engine.bin filtre önbelleği ve kilitsiz DecisionCache ile düşük bellekte akıcı deneyim.</string>
     <string name="about_feature4_title">🎨 Native CSS &amp; 1x1 GIF Interception</string>
@@ -155,9 +157,14 @@
     <string name="translate_source_lang">Kaynak Dil</string>
     <string name="translate_target_lang">Hedef Dil</string>
     <string name="translate_action">Çevir</string>
+    <string name="translate_show_original">Orijinali göster</string>
+    <string name="translate_open_google">Google Çeviri\'de aç</string>
+    <string name="translate_unavailable">Sayfa henüz çeviriye hazır değil</string>
     <string name="translate_auto_detect">Otomatik Algıla</string>
 
     <!-- Lisanslar -->
+    <string name="about_source_code">Kaynak kod GitHub\'da</string>
+    <string name="about_source_code_desc">Orbit\'in kaynak kodunu GitHub\'da aç</string>
     <string name="about_licenses_title">Lisanslar ve Açık Kaynak</string>
     <string name="about_orbit_license_title">📄 Orbit Browser — Mozilla Public License 2.0 (MPL 2.0)</string>
     <string name="about_orbit_license_desc">Orbit açık kaynaklı bir yazılımdır. Tüm kaynak kodları Mozilla Public License 2.0 (MPL 2.0) hükümleri kapsamında lisanslanmış ve dağıtılmaktadır.</string>
@@ -189,6 +196,11 @@
     <string name="data_cleared">Tarama verileri temizlendi</string>
     <string name="download_started">İndirme başladı</string>
     <string name="incognito_tab">Gizli sekme</string>
+    <string name="incognito_cookies_note">Not: Bu cihazın WebView sürümü ayrı gizli profili desteklemiyor; çerezler ve oturumlar normal sekmelerle ortak</string>
     <string name="no_app_for_link">Bu bağlantıyı açacak uygulama yok</string>
     <string name="find_hint">Sayfada ara</string>
+    <string name="page_crashed_reloaded">Sayfa bellek yetersizliğinden kapandı, yeniden yükleniyor</string>
+    <string name="page_crashed">Sayfa yine bellek yetersizliğinden kapandı. Yeniden denemek için yenile\'ye dokunun</string>
+    <string name="ssl_error">%1$s sitesinin güvenlik sertifikası doğrulanamadı; sayfa açılmadı.</string>
+    <string name="ssl_error_old_android">Bu Android sürümünün sertifika deposu eski olabilir.</string>
 </resources>

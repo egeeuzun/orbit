@@ -22,6 +22,10 @@
         <item name="colorSurfaceBright">@color/orbit_surface_bright</item>
         <item name="colorOnSurface">@color/orbit_on_surface</item>
         <item name="colorOnSurfaceVariant">@color/orbit_on_surface_variant</item>
+        <!-- Material 3, yükseltilmiş yüzeylere (araç çubuğu, alt sayfa) ana
+             rengi (mavi) bindiriyordu: koyu temada siyah olması gereken üst
+             çubuk #060B11 lacivert çıkıyordu. Yüzeyler paletteki rengi aynen alır. -->
+        <item name="elevationOverlayEnabled">false</item>
         <!-- Theme.Material3 pencere zeminini stok `m3_sys_color_*_background`
              sabitine bağlar; palet ezildiğinde bu geride kalıyor ve kendi
              arka planı olmayan ekranlar (Hakkında) koyu temada siyah
@@ -49,8 +53,8 @@
         BottomSheetDialog ayrı bir tema ile açılır ve `ContextThemeWrapper` onu
         activity temasının üzerine `force=true` ile uygular: bu temada
         tanımlanmayan her renk stok Material3 değerine düşer. Palet burada
-        yinelenmezse koyu temada menü/sekme/kalkan sayfaları Orbit lacivertine
-        (#0F172A) değil stok M3 siyahına (#1D1B20) boyanıyordu.
+        yinelenmezse koyu temada menü/sekme/kalkan sayfaları Orbit paletine
+        değil stok M3 rengine (#1D1B20) boyanıyordu.
     -->
     <style name="BottomSheetDialogTheme" parent="Theme.Material3.DayNight.BottomSheetDialog">
         <item name="colorPrimary">@color/orbit_primary</item>
@@ -69,6 +73,7 @@
         <item name="colorOnSurface">@color/orbit_on_surface</item>
         <item name="colorOnSurfaceVariant">@color/orbit_on_surface_variant</item>
         <item name="android:navigationBarColor">@color/orbit_surface_container_low</item>
+        <item name="elevationOverlayEnabled">false</item>
         <item name="bottomSheetStyle">@style/BottomSheetStyle</item>
     </style>
 

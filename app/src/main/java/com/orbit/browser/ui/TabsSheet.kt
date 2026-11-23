@@ -21,8 +21,9 @@ import com.orbit.browser.util.UrlUtils
  */
 class TabsSheet(
     private val context: Context,
-    private val tabs: List<Tab>,
-    private val current: Tab?,
+    /** Canlı sekme listesi ve geçerli sekme; kapatmadan sonra yeniden okunur. */
+    private val tabs: () -> List<Tab>,
+    private val current: () -> Tab?,
     private val onSelect: (Tab) -> Unit,
     private val onClose: (Tab) -> Unit,
     private val onNew: (incognito: Boolean) -> Unit
@@ -47,7 +48,7 @@ class TabsSheet(
         root.addView(dragHandle)
 
         val header = TextView(context).apply {
-            text = context.getString(R.string.open_tabs_count, tabs.size)
+            text = context.getString(R.string.open_tabs_count, tabs().size)
             textSize = 15f
             setTypeface(null, android.graphics.Typeface.BOLD)
             setTextColor(com.google.android.material.color.MaterialColors.getColor(context, com.google.android.material.R.attr.colorOnSurface, 0))
@@ -66,16 +67,35 @@ class TabsSheet(
         }
 
         val adapter = Adapter(
-            items = ArrayList(tabs),
-            current = current,
+            items = ArrayList(tabs()),
+            current = current(),
             onSelect = { tab ->
                 onSelect(tab)
                 dialog.dismiss()
             },
             onClose = { tab, position, self ->
                 onClose(tab)
+                // Liste ve başlık TabManager'ın gerçek durumundan yeniden
+                // kurulur. Eskiden başlık açılışta bir kez yazılıyordu ve
+                // sekme kapatılınca "2 Açık Sekme" olarak kalıyordu; geçerli
+                // sekme kapatıldığında yerine geçen sekme de vurgulanmıyordu.
+                val live = tabs()
+                val oldCurrent = self.current
+                self.current = current()
                 self.items.removeAt(position)
-                self.notifyItemRemoved(position)
+                if (self.items == live) {
+                    self.notifyItemRemoved(position)
+                    if (oldCurrent !== self.current) {
+                        val i = self.items.indexOf(self.current)
+                        if (i >= 0) self.notifyItemChanged(i)
+                    }
+                } else {
+                    // Son sekme kapandı ve yerine yeni başlangıç sekmesi açıldı.
+                    self.items.clear()
+                    self.items.addAll(live)
+                    self.notifyDataSetChanged()
+                }
+                header.text = context.getString(R.string.open_tabs_count, live.size)
                 if (self.items.isEmpty()) dialog.dismiss()
             }
         )
@@ -125,7 +145,7 @@ class TabsSheet(
 
     private class Adapter(
         val items: ArrayList<Tab>,
-        val current: Tab?,
+        var current: Tab?,
         val onSelect: (Tab) -> Unit,
         val onClose: (Tab, Int, Adapter) -> Unit
     ) : RecyclerView.Adapter<Holder>() {
@@ -136,9 +156,14 @@ class TabsSheet(
         override fun onBindViewHolder(holder: Holder, position: Int) {
             val tab = items[position]
             val prefix = if (tab.incognito) "🕶 " else ""
-            holder.binding.tabTitle.text =
-                prefix + UrlUtils.titleOrHost(tab.title, tab.displayUrl())
-            holder.binding.tabUrl.text = UrlUtils.forDisplay(tab.displayUrl())
+            // Başlangıç sekmesinin iç adresi (orbit://home) kullanıcıya gösterilmez.
+            val ctx = holder.itemView.context
+            holder.binding.tabTitle.text = prefix + if (tab.isHome) {
+                ctx.getString(R.string.new_tab)
+            } else {
+                UrlUtils.titleOrHost(tab.title, tab.displayUrl())
+            }
+            holder.binding.tabUrl.text = if (tab.isHome) "" else UrlUtils.forDisplay(tab.displayUrl())
 
             val isActive = tab === current
             holder.binding.tabContainer.setBackgroundResource(

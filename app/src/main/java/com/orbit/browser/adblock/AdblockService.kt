@@ -125,15 +125,14 @@ class AdblockService private constructor(context: Context) {
                 loadHostsCache(stamp)
                 if (stamp == prefs.engineStamp && engineFile.isFile) {
                     val t0 = android.os.SystemClock.elapsedRealtime()
-                    val bytes = engineFile.readBytes()
-                    val tRead = android.os.SystemClock.elapsedRealtime()
-                    val cached = AdblockEngine.fromCache(bytes)
+                    // Dosya yerel tarafta okunur: 12 MB'lık bayt dizisi
+                    // her soğuk açılışta Java yığınından geçmez.
+                    val cached = AdblockEngine.fromCacheFile(engineFile)
                     if (cached != null) {
                         val tDone = android.os.SystemClock.elapsedRealtime()
                         Log.i(
                             TAG,
-                            "motor önbellekten kuruldu: ${bytes.size / 1024} KB, " +
-                                "okuma ${tRead - t0} ms, çözme ${tDone - tRead} ms, " +
+                            "motor önbellekten kuruldu: ${engineFile.length() / 1024} KB, " +
                                 "toplam ${tDone - t0} ms"
                         )
                         install(cached)
@@ -155,7 +154,7 @@ class AdblockService private constructor(context: Context) {
                 // kullanıcı elle güncelleyince derleme yeniden denenir.
                 if (prefs.pendingBuildStamp == stamp) {
                     Log.w(TAG, "Önceki derleme tamamlanmadı; otomatik yeniden deneme atlandı")
-                    buildHosts(readRules().first)
+                    buildHosts(ruleSources())
                     publish(State.FAILED)
                     return@execute
                 }
@@ -222,11 +221,7 @@ class AdblockService private constructor(context: Context) {
                 System.currentTimeMillis() - target.lastModified() < UPDATE_INTERVAL_MS
             ) continue
             try {
-                val text = fetchWithIncludes(list.url, 0)
-                if (text.length > MIN_LIST_BYTES) {
-                    target.writeText(text)
-                    downloaded++
-                }
+                if (download(list.url, target)) downloaded++
             } catch (t: Throwable) {
                 Log.w(TAG, "${list.id} indirilemedi: ${t.message}")
             }
@@ -239,11 +234,7 @@ class AdblockService private constructor(context: Context) {
                 System.currentTimeMillis() - target.lastModified() < UPDATE_INTERVAL_MS
             ) continue
             try {
-                val text = fetchWithIncludes(url, 0)
-                if (text.length > MIN_LIST_BYTES) {
-                    target.writeText(text)
-                    downloaded++
-                }
+                if (download(url, target)) downloaded++
             } catch (t: Throwable) {
                 Log.w(TAG, "Özel liste $url indirilemedi: ${t.message}")
             }
@@ -257,17 +248,17 @@ class AdblockService private constructor(context: Context) {
      * @return kullanılabilir bir motor kurulduysa true
      */
     private fun rebuildFromDisk(stamp: String): Boolean {
-        val (text, used) = readRules()
+        val sources = ruleSources()
         // Hızlı yol motordan önce üretilir: derleme uzun sürerken de
         // engelleme çalışsın.
-        buildHosts(text)
+        buildHosts(sources)
 
         // Süreç derleme sırasında ölürse işaret kalır; [start] onu görüp
         // aynı girdiyle yeniden denemez. Süreç yaşadığı sürece (istisna
         // dahil) işaret kaldırılır.
         prefs.pendingBuildStamp = stamp
         try {
-            val built = AdblockEngine.fromRules(text)
+            val built = AdblockEngine.fromFiles(sources.paths, sources.extra)
             if (built == null) {
                 publish(State.FAILED)
                 return false
@@ -275,31 +266,32 @@ class AdblockService private constructor(context: Context) {
 
             // Serileştirme kurulumdan ÖNCE yapılmalı: [install] tutamacın sahipliğini
             // çalışan motora devreder ve [built] geçersiz hale gelir.
-            val snapshot = try {
-                built.serialize()
-            } catch (t: Throwable) {
-                Log.w(TAG, "Motor serileştirilemedi: ${t.message}")
-                null
-            }
-
-            install(built)
-
             // Derlenmiş motoru sakla: sonraki açılış saniyeler yerine milisaniye sürer.
             // Yazamazsak damga temizlenir; aksi halde açılışta bayat önbellek
             // güncel sanılıp yüklenirdi.
-            if (snapshot != null) {
-                try {
-                    engineFile.writeBytes(snapshot)
-                    prefs.engineStamp = stamp
-                } catch (t: Throwable) {
-                    Log.w(TAG, "Motor önbelleğe yazılamadı: ${t.message}")
-                    prefs.engineStamp = ""
-                }
+            val saved = try {
+                built.serializeTo(engineFile)
+            } catch (t: Throwable) {
+                Log.w(TAG, "Motor önbelleğe yazılamadı: ${t.message}")
+                false
+            }
+            prefs.engineStamp = if (saved) stamp else ""
+
+            // Önbellek yazıldıysa motor ondan, eşlenmiş dosyadan yeniden
+            // kurulur ve derlenen kopya bırakılır. Yoksa derlemenin yapıldığı
+            // oturum boyunca motor 12 MB'lık kendi kopyasını ve derlemeden
+            // kalan parçalanmayı taşıyordu (SM-T320: native heap 56 MB;
+            // yeniden açılışta 15 MB). Liste güncellemesi 3 günde bir ve her
+            // liste ayarı değişikliğinde bu yoldan geçiliyor.
+            val mapped = if (saved) AdblockEngine.fromCacheFile(engineFile) else null
+            if (mapped != null) {
+                built.close()
+                install(mapped)
             } else {
-                prefs.engineStamp = ""
+                install(built)
             }
             publish(State.READY)
-            return used > 0
+            return sources.used > 0
         } finally {
             prefs.pendingBuildStamp = ""
             // Derlemenin geçici yapıları ve (varsa) eski motor serbest
@@ -322,31 +314,32 @@ class AdblockService private constructor(context: Context) {
     }
 
     /**
-     * Etkin listelerin metnini birleştirir.
-     * @return metin ve kullanılan liste sayısı (0 ise paket içi liste kullanıldı)
+     * Motorun girdisi: diskteki liste dosyalarının yolları ve küçük ek metin
+     * (paket içi başlangıç listesi, kullanıcının elle yazdığı kurallar).
+     *
+     * Liste metinleri burada okunmaz; yerel taraf dosyaları kendisi okur.
+     * Eskiden ~8 MB'lık metin Java yığınında birkaç kez çoğalıyordu.
      */
-    private fun readRules(): Pair<String, Int> {
-        val sb = StringBuilder(4 shl 20)
-        var used = 0
+    private class RuleSources(val paths: Array<String>, val extra: String, val used: Int)
+
+    private fun ruleSources(): RuleSources {
+        val paths = ArrayList<String>()
         for (id in prefs.enabledLists) {
             val f = File(filtersDir, "$id.txt")
-            if (!f.isFile) continue
-            sb.append(f.readText()).append('\n')
-            used++
+            if (f.isFile) paths.add(f.absolutePath)
         }
         for (url in prefs.customFilterUrls) {
             val id = "custom_" + url.hashCode().toUInt().toString(16)
             val f = File(filtersDir, "$id.txt")
-            if (!f.isFile) continue
-            sb.append(f.readText()).append('\n')
-            used++
+            if (f.isFile) paths.add(f.absolutePath)
         }
-        // Paket içindeki başlangıç listesi: ilk açılışta ağ beklenmeden korur.
-        if (used == 0) {
-            sb.append(app.assets.open(BUNDLED_LIST).bufferedReader().use { it.readText() })
+        val extra = StringBuilder()
+        // Paket içindeki başlangıç listesi (2,5 KB): ilk açılışta ağ beklenmeden korur.
+        if (paths.isEmpty()) {
+            extra.append(app.assets.open(BUNDLED_LIST).bufferedReader().use { it.readText() })
         }
-        prefs.customRules.takeIf { it.isNotBlank() }?.let { sb.append('\n').append(it) }
-        return sb.toString() to used
+        prefs.customRules.takeIf { it.isNotBlank() }?.let { extra.append('\n').append(it) }
+        return RuleSources(paths.toTypedArray(), extra.toString(), paths.size)
     }
 
     /**
@@ -359,7 +352,7 @@ class AdblockService private constructor(context: Context) {
         io.execute {
             try {
                 val t0 = android.os.SystemClock.elapsedRealtime()
-                buildHosts(readRules().first)
+                buildHosts(ruleSources())
                 Log.i(
                     TAG,
                     "hızlı yol listelerden üretildi: ${hosts.size} ana bilgisayar, " +
@@ -391,19 +384,21 @@ class AdblockService private constructor(context: Context) {
         }
     }
 
-    /** Hızlı yol tablosunu filtre metninden üretip diske yazar. */
-    private fun buildHosts(rules: String) {
-        val bytes = try {
-            NativeAdblock.nativeHostsFromRules(rules)
+    /** Hızlı yol tablosunu listelerden üretip diske yazar, sonra diskten kurar. */
+    private fun buildHosts(sources: RuleSources) {
+        val ok = try {
+            NativeAdblock.available &&
+                NativeAdblock.nativeHostsToFile(sources.paths, sources.extra, hostsFile.absolutePath)
         } catch (t: Throwable) {
             Log.w(TAG, "Hızlı yol üretilemedi: ${t.message}")
-            null
-        } ?: return
-        hosts = HostBlocklist.fromBytes(bytes)
+            false
+        }
+        if (!ok) return
         try {
-            hostsFile.writeBytes(bytes)
+            // ~700 KB; arama tablosu zaten Java tarafında tutuluyor.
+            hosts = HostBlocklist.fromBytes(hostsFile.readBytes())
         } catch (t: Throwable) {
-            Log.w(TAG, "Hızlı yol yazılamadı: ${t.message}")
+            Log.w(TAG, "Hızlı yol okunamadı: ${t.message}")
         }
     }
 
@@ -415,33 +410,51 @@ class AdblockService private constructor(context: Context) {
     }
 
     /**
-     * `!#include <dosya>` yönergelerini çözer. uBlock Origin'in ana listesi
-     * içeriğinin çoğunu bu şekilde parçalara ayırdığı için, çözülmezse
-     * listenin neredeyse tamamı kaybolur.
+     * Listeyi indirip [target]'a yazar. Gövde satır satır doğrudan dosyaya
+     * akar; eskiden önce tamamı String'e okunuyor, `!#include` varsa bir de
+     * iki kat kapasiteli `StringBuilder`'a kopyalanıyordu (en büyük liste
+     * için Java yığınında ~10 MB). Önce geçici dosyaya yazılır; indirme
+     * yarıda kalır ya da liste anlamsız derecede kısaysa eski dosya korunur.
+     *
+     * @return yeni liste yerine konduysa true
      */
-    private fun fetchWithIncludes(url: String, depth: Int): String {
-        val body = httpGet(url)
-        if (depth >= MAX_INCLUDE_DEPTH || !body.contains("!#include")) return body
-
-        val base = url.substringBeforeLast('/', "")
-        val out = StringBuilder(body.length * 2)
-        for (line in body.lineSequence()) {
-            if (line.startsWith("!#include ")) {
-                val rel = line.removePrefix("!#include ").trim()
-                if (rel.isEmpty() || rel.contains("..") || base.isEmpty()) continue
-                try {
-                    out.append(fetchWithIncludes("$base/$rel", depth + 1)).append('\n')
-                } catch (t: Throwable) {
-                    Log.w(TAG, "include alınamadı: $rel (${t.message})")
-                }
-            } else {
-                out.append(line).append('\n')
-            }
+    private fun download(url: String, target: File): Boolean {
+        val tmp = File(target.path + ".part")
+        try {
+            tmp.bufferedWriter().use { out -> fetchInto(url, out, 0) }
+            if (tmp.length() <= MIN_LIST_BYTES) return false
+            return tmp.renameTo(target)
+        } finally {
+            if (tmp.exists()) tmp.delete()
         }
-        return out.toString()
     }
 
-    private fun httpGet(url: String): String {
+    /**
+     * `!#include <dosya>` yönergelerini çözerek listeyi [out]'a yazar.
+     * uBlock Origin'in ana listesi içeriğinin çoğunu bu şekilde parçalara
+     * ayırdığı için, çözülmezse listenin neredeyse tamamı kaybolur.
+     */
+    private fun fetchInto(url: String, out: java.io.Writer, depth: Int) {
+        val base = url.substringBeforeLast('/', "")
+        httpGet(url) { reader ->
+            reader.lineSequence().forEach { line ->
+                if (line.startsWith("!#include ") && depth < MAX_INCLUDE_DEPTH) {
+                    val rel = line.removePrefix("!#include ").trim()
+                    if (rel.isEmpty() || rel.contains("..") || base.isEmpty()) return@forEach
+                    try {
+                        fetchInto("$base/$rel", out, depth + 1)
+                    } catch (t: Throwable) {
+                        Log.w(TAG, "include alınamadı: $rel (${t.message})")
+                    }
+                } else {
+                    out.write(line)
+                    out.write('\n'.code)
+                }
+            }
+        }
+    }
+
+    private fun httpGet(url: String, body: (java.io.BufferedReader) -> Unit) {
         val conn = URL(url).openConnection() as HttpURLConnection
         conn.connectTimeout = 15_000
         conn.readTimeout = 30_000
@@ -454,7 +467,7 @@ class AdblockService private constructor(context: Context) {
             val stream = if (conn.contentEncoding?.contains("gzip", true) == true) {
                 GZIPInputStream(raw)
             } else raw
-            return stream.bufferedReader().use { it.readText() }
+            stream.bufferedReader().use(body)
         } finally {
             conn.disconnect()
         }
@@ -491,8 +504,13 @@ class AdblockService private constructor(context: Context) {
         /**
          * Serileştirme biçimi değişirse artırılır; eski önbellekleri geçersiz kılar.
          * v2: adblock 0.13 (FlatBuffers); 0.10'un `engine.bin`'i okunamaz.
+         * v3: adblock 0.13.6 — veri biçimi 8 → 9 (`$to=` kovaları). Eski
+         *     dosya zaten reddedilirdi; damga değişince 11 MB boşuna okunup
+         *     çözülmeye çalışılmaz, motor doğrudan bir kez yeniden derlenir.
+         * v4: dosyanın başında 3 bayt dolgu; motor dosyayı kopyalamadan
+         *     eşleyerek kullanır (bkz. lib.rs `nativeFromCacheFile`).
          */
-        private const val ENGINE_FORMAT = "v2"
+        private const val ENGINE_FORMAT = "v4"
 
         private const val BUNDLED_LIST = "default_filters.txt"
         private const val UPDATE_INTERVAL_MS = 3L * 24 * 60 * 60 * 1000

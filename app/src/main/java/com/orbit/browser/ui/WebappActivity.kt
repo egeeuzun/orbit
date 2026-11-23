@@ -117,20 +117,31 @@ class WebappActivity : ComponentActivity(), OrbitWebViewClient.Callbacks, OrbitC
 
     override fun onResume() {
         super.onResume()
+        if (rendererGone) return
         web.onResume()
         web.resumeTimers()
         hideSystemBars()
     }
 
     override fun onPause() {
-        web.onPause()
-        web.pauseTimers()
+        // `pauseTimers` süreç geneli: ana tarayıcının sekmelerini de durdurur.
+        // MainActivity ön plana dönünce `resumeTimers` ile geri alır.
+        if (::web.isInitialized && !rendererGone) {
+            web.onPause()
+            web.pauseTimers()
+        }
         super.onPause()
     }
 
     override fun onDestroy() {
         // Ortak yol: ses gözcüsü kaydı ve JS köprüsü de görünümle birlikte bırakılır.
-        if (::web.isInitialized) WebViewFactory.destroy(web)
+        if (::web.isInitialized) {
+            if (rendererGone) WebViewFactory.destroyDead(web) else WebViewFactory.destroy(web)
+        }
+        // Tam ekrandayken kapanırsa sayfanın geri çağrısı da tamamlanır.
+        customViewCallback?.onCustomViewHidden()
+        customViewCallback = null
+        customView = null
         super.onDestroy()
     }
 
@@ -166,6 +177,16 @@ class WebappActivity : ComponentActivity(), OrbitWebViewClient.Callbacks, OrbitC
     override fun onPageFinished(tab: Tab) = Unit
     override fun onBlockedCountChanged(tab: Tab) = Unit
     override fun onExternalIntent(uri: Uri): Boolean = false
+
+    /** Oluşturucu öldü; görünüm yalnızca yok edilebilir. */
+    private var rendererGone = false
+
+    override fun onRendererGone(tab: Tab, view: WebView) {
+        if (rendererGone) return
+        rendererGone = true
+        // Pencere baştan kurulur: onCreate aynı adresi yeni bir WebView'de açar.
+        recreate()
+    }
 
     // -------------------------------------------------------- OrbitChromeClient.Host
 

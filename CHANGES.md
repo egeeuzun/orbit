@@ -1,5 +1,105 @@
 # История изменений / Changelog
 
+## 2.7 — 23 November 2026
+
+Version bumped from 2.6 to 2.7 (version code 2700).
+
+### Tablets
+- **Tab strip above the address bar**, as in Samsung Internet, on screens
+  600 dp and wider with the address bar on top. Each tab shows its favicon,
+  title and a close button; the selected tab merges into the toolbar.
+  Favicons come from the same cache as the start page, and no extra WebView
+  or thumbnail is kept per tab.
+- The **+** button sits right after the last tab. When tabs no longer fit
+  they shrink to a minimum width and the strip scrolls, with **+** pinned at
+  the right edge. Long-press **+** for a private tab.
+- After rotation the tabs are resized and the selected tab is scrolled into
+  view (before, portrait kept the landscape widths and could hide it).
+- **The ⋮ menu drops down from its button** when the address bar is on top,
+  instead of rising from the bottom of the screen.
+- **Settings and About are capped at 720 dp** and centred; on a landscape
+  tablet the switches used to sit 2,500 px away from their labels.
+- Settings shows **"Start screen"** instead of the internal `orbit://home`
+  address, and saving an empty home page returns to the start screen
+  (it used to save an empty address).
+
+### Translation
+- **Pages are translated in place.** Orbit used to open
+  `translate.google.com/translate?u=…`, so Google's servers fetched the page:
+  Wikipedia and others refuse that traffic, and Google sometimes answered
+  with a CAPTCHA. Now the page loads from the device as usual and only its
+  text goes to Google's translation service.
+- Paragraphs are rebuilt in the translated word order with the original
+  links and inline elements moved, not copied, so they keep working. Text
+  that looks like an address, domain or e-mail is left alone.
+- Only text on screen is translated; the rest follows as you scroll.
+- **Show original** restores the page. **Open in Google Translate** remains
+  as a fallback.
+- The page's declared language is used as the source, so short fragments
+  are no longer misdetected ("Talk" → "Talc"). The last target language is
+  remembered.
+- Works on Android 5's original WebView (Chromium 37).
+
+### Private tabs
+- **Private tabs no longer share site data with normal tabs.** Each private
+  session gets its own WebView profile (WebView 123+): cookies, local
+  storage, IndexedDB, service workers and cache are separate, are wiped when
+  the last private tab closes, and leftover profiles are deleted at the next
+  launch. DOM storage is enabled again in private tabs, which fixes sites
+  that needed it.
+- On older WebView versions the previous behaviour stays, and Orbit says
+  that cookies are shared.
+
+### Look
+- **True black dark theme:** black background and neutral grey surfaces
+  instead of navy. Material's tint on raised surfaces (which turned the
+  toolbar #060B11) is turned off, so every surface uses the palette colour.
+- The tab manager header updates when a tab is closed (it stayed at the
+  old count), the tab that takes over is highlighted, and the start tab is
+  listed as "New tab" instead of `orbit://home`.
+- About links to the source code on GitHub.
+
+### Ad blocking engine
+- **Brave `adblock-rust` 0.13.5 → 0.13.6**, which adds support for `$to=`
+  rules (none of the default lists use them yet; custom rules and opt-in
+  lists can). The cache format changed; the engine is rebuilt once after
+  updating.
+- **The engine cache is memory-mapped instead of copied.** adblock-rust
+  copied the 12 MB FlatBuffer into the heap on every load; a small patch
+  (`rust/adblock-jni/vendor/adblock`, marked `ORBIT PATCH`) lets it use a
+  read-only map of `engine.bin`. The kernel can drop those pages under
+  pressure, and only about 5 MB of them stay resident while browsing.
+  Measured on a 1 GB phone (SM-G530FZ): dirty memory at start 46 → 34 MB.
+  The engine is switched to the mapped copy right after a rebuild too, not
+  only at the next launch (tablet: native heap 56 → 18 MB after a rebuild).
+- **Filter lists no longer pass through the Java heap.** List files and the
+  cache are read and written by the native side, and list downloads stream
+  straight to disk. Java heap peak during the engine compile: 68 → 13 MB.
+
+### Stability and memory
+- **A killed page no longer takes the browser down.** On Android 8+ the
+  WebView renderer runs in its own process, and the low-memory killer often
+  picks it on 1 GB devices; Orbit did not handle that and was killed with
+  it. Now the tab is kept, the current page reloads, and a page that keeps
+  crashing is not reloaded in a loop.
+- When Orbit goes to the background with nothing playing, the page and its
+  timers are paused (CNN: renderer CPU about 115 % → 4 %).
+- Leaving a home-screen webapp no longer leaves the browser's JavaScript
+  timers stopped.
+- Under memory pressure the favicon cache is released, and under critical
+  pressure sleeping tabs drop their back/forward state and keep only their
+  address.
+
+### Android 5–6
+- **The Translate sheet no longer crashes.** The translate icon's path used
+  a compact number syntax that Android 6 and older cannot parse, and the
+  sheet read the system language with an Android 7 API. Vector icons in
+  layouts are now loaded with `app:srcCompat`.
+- **A page whose certificate cannot be verified now says so** instead of
+  staying blank. Android 7.0 and older do not trust newer roots such as
+  ISRG Root X1 (Let's Encrypt), so many HTTPS sites cannot open in their
+  WebView and filter list downloads fail on them too.
+
 ## 2.6 — 2 November 2026
 
 Version bumped from 2.5 to 2.6 (version code 2600).

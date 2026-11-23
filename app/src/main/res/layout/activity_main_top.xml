@@ -26,6 +26,42 @@
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
+            <!-- Tablet sekme şeridi (Samsung Internet / masaüstü düzeni).
+                 Yalnızca kısa kenarı >= 600dp olan ekranlarda MainActivity
+                 görünür yapar; telefonda üst düzen seçilse bile gizli kalır
+                 ve RecyclerView hiç bağdaştırıcı almaz. -->
+            <LinearLayout
+                android:id="@+id/tabStrip"
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/tab_strip_height"
+                android:background="?attr/colorSurfaceDim"
+                android:gravity="bottom"
+                android:orientation="horizontal"
+                android:paddingStart="6dp"
+                android:paddingEnd="4dp"
+                android:visibility="gone">
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/tabStripList"
+                    android:layout_width="wrap_content"
+                    android:layout_height="@dimen/tab_strip_item_height"
+                    android:overScrollMode="never"
+                    android:scrollbars="none" />
+
+                <ImageButton
+                    android:id="@+id/tabStripNew"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:layout_gravity="center_vertical"
+                    android:layout_marginStart="2dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/new_tab"
+                    android:padding="8dp"
+                    android:scaleType="fitCenter"
+                    app:srcCompat="@drawable/ic_add"
+                    app:tint="?attr/colorOnSurface" />
+            </LinearLayout>
+
             <LinearLayout
                 android:id="@+id/bottomBar"
                 android:layout_width="match_parent"
@@ -45,7 +81,7 @@
                     android:contentDescription="@string/home"
                     android:padding="@dimen/nav_button_padding"
                     android:scaleType="fitCenter"
-                    android:src="@drawable/ic_home"
+                    app:srcCompat="@drawable/ic_home"
                     app:tint="?attr/colorOnSurface" />
 
                 <EditText
@@ -78,7 +114,7 @@
                     android:contentDescription="@string/reload"
                     android:padding="@dimen/nav_button_padding"
                     android:scaleType="fitCenter"
-                    android:src="@drawable/ic_refresh"
+                    app:srcCompat="@drawable/ic_refresh"
                     app:tint="?attr/colorOnSurface" />
 
                 <FrameLayout
@@ -93,7 +129,7 @@
                         android:contentDescription="@string/tabs"
                         android:padding="@dimen/nav_button_padding"
                         android:scaleType="fitCenter"
-                        android:src="@drawable/ic_tabs"
+                        app:srcCompat="@drawable/ic_tabs"
                         app:tint="?attr/colorOnSurface" />
 
                     <TextView
@@ -116,7 +152,7 @@
                     android:contentDescription="@string/menu"
                     android:padding="@dimen/nav_button_padding"
                     android:scaleType="fitCenter"
-                    android:src="@drawable/ic_more"
+                    app:srcCompat="@drawable/ic_more"
                     app:tint="?attr/colorOnSurface" />
             </LinearLayout>
 

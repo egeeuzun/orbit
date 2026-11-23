@@ -35,7 +35,7 @@
                 android:layout_width="26dp"
                 android:layout_height="26dp"
                 android:layout_gravity="center"
-                android:src="@drawable/ic_translate"
+                app:srcCompat="@drawable/ic_translate"
                 app:tint="#2563EB" />
         </FrameLayout>
 
@@ -117,5 +117,25 @@
         android:textSize="15sp"
         android:textStyle="bold"
         app:cornerRadius="26dp" />
+
+    <!-- Çeviri etkinse orijinal metne dönüş. -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnShowOriginal"
+        style="@style/Widget.Material3.Button.OutlinedButton"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:layout_marginTop="8dp"
+        android:text="@string/translate_show_original"
+        android:visibility="gone"
+        app:cornerRadius="24dp" />
+
+    <!-- Eski yol: sayfa içi çeviri bir sitede işe yaramazsa. -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnTranslateGoogle"
+        style="@style/Widget.Material3.Button.TextButton"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:layout_marginTop="4dp"
+        android:text="@string/translate_open_google" />
 
 </LinearLayout>
